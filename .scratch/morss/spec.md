@@ -1,6 +1,6 @@
 # Morss 产品规格
 
-状态：原有基础版分项选择及 Q24–Q83 已确认，完整性复核发现的六项边界已补齐。用户已选定 A · 玻璃阅读台，Flutter 界面及内存示例已实现；完整产品实现与 75 项验收尚未完成。本文集中维护产品要求，以基础版和扩展版标记既定交付阶段。
+状态：原有基础版分项选择及 Q24–Q83 已确认，完整性复核发现的六项边界已补齐。用户已选定 A · 玻璃阅读台；Flutter 界面及 Web 内存示例已实现，Android / Windows 已接入真实订阅与本地正文文字保存，范围见[任务 04](issues/04-live-subscriptions.md)。完整产品实现与 75 项验收尚未完成。本文集中维护产品要求，以基础版和扩展版标记既定交付阶段。
 
 验收条目是后续执行标准；当前界面实现、分项验证与平台边界见[任务 02](issues/02-implement-selected-a.md)，不表示完整产品验收通过。领域词汇见 [CONTEXT.md](../../CONTEXT.md)，局域网同步的取舍见 [ADR-0001](../../docs/adr/0001-local-first-lan-sync.md)，备份与设备身份的边界见 [ADR-0002](../../docs/adr/0002-restore-with-independent-device-identity.md)。
 
@@ -82,7 +82,7 @@ Morss：个人多设备 RSS 阅读
 - 当前 Flutter 界面同时生成 Web 预览包；GitHub 构建的 Android APK 有完整签名配置时使用 release 签名，未配置时生成 debug APK。
 - 后续扩展目标为 iOS、macOS、Linux 原生客户端。
 
-2026-09-13 当前工作环境为 Android 13 / Termux，CPU 为 arm64。Flutter 3.47.4、Dart 3.13.3 与 Chromium 149 已可运行，界面任务已执行状态测试、组件测试、静态分析和 Web 构建。Web、Android 与 Windows 的 GitHub 构建工作流已配置，具体触发方式与签名约定见[构建说明](../../docs/ci/github-actions.md)和[任务 03](issues/03-github-build-workflow.md)。GitHub runner 的 Verify、Web release、Windows x64 release 与 Android 签名 release 构建均已通过，三份产物均已上传；Android / Windows 实际安装和原生运行仍待验证。
+2026-09-13 当前工作环境为 Android 13 / Termux，CPU 为 arm64。Flutter 3.47.4、Dart 3.13.3 与 Chromium 149 已可运行，界面任务已执行状态测试、组件测试、静态分析和 Web 构建。Web、Android 与 Windows 的 GitHub 构建工作流已配置，具体触发方式与签名约定见[构建说明](../../docs/ci/github-actions.md)和[任务 03](issues/03-github-build-workflow.md)。界面示例版本 `c810ff9` 的 GitHub runner Verify、Web release、Windows x64 release 与 Android 签名 release 构建均已通过，三份产物均已上传。本轮真实订阅增量的本地检查记录见[任务 04](issues/04-live-subscriptions.md)，加入 SQLite 与原生插件后的 Android / Windows 构建、实际安装与运行仍待验证。
 
 ### 界面
 
@@ -92,7 +92,7 @@ Morss：个人多设备 RSS 阅读
 - 跟随系统明暗主题，支持调节字号。
 - 提供“继续阅读”入口。
 
-用户已确认采用 A · 玻璃阅读台，按原 A 的排版、配色、图片与交互层级重写为 Flutter，并保留 A 网页对照。“iOS 27 风格”描述本次概念视觉方向，不改变 Android / Windows 交付范围。设计数值、来源与截图见[采用 A 的设计记录](../../docs/design/selected-a.md)；当前实现使用内存示例，不代表下面各节的真实数据、网络与后台功能已经完成。
+用户已确认采用 A · 玻璃阅读台，按原 A 的排版、配色、图片与交互层级重写为 Flutter，并保留 A 网页对照。“iOS 27 风格”描述本次概念视觉方向，不改变 Android / Windows 交付范围。设计数值、来源与截图见[采用 A 的设计记录](../../docs/design/selected-a.md)。Web 保留内存示例；原生界面使用空库和真实订阅，保留 A 的视觉结构。当前只保存订阅正文文字，尚未开放的同步、AI、备份等功能不执行演示动作，不表示以下完整产品要求已经实现。
 
 ## 订阅、刷新与阅读
 

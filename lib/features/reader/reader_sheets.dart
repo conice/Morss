@@ -29,7 +29,18 @@ enum ReaderSheet {
   cleanup,
   subscribe,
   articleMenu,
-  original,
+  original;
+
+  bool get availableInLibrary => switch (this) {
+    settings ||
+    appearance ||
+    archives ||
+    deleteArchive ||
+    subscribe ||
+    articleMenu ||
+    original => true,
+    _ => false,
+  };
 }
 
 abstract final class ReaderSheets {
@@ -39,7 +50,17 @@ abstract final class ReaderSheets {
     required ReaderSheet initial,
   }) async {
     GeneratedResult? summary;
-    if (initial == ReaderSheet.summary) {
+    if (!controller.hasSelection &&
+        const {
+          ReaderSheet.archives,
+          ReaderSheet.deleteArchive,
+          ReaderSheet.articleMenu,
+          ReaderSheet.original,
+        }.contains(initial)) {
+      showReaderNotice(context, '先选择一篇文章。');
+      return;
+    }
+    if (initial == ReaderSheet.summary && controller.isDemo) {
       final outcome = controller.generate(GenerationTask.summary);
       if (outcome.result == null) {
         showReaderNotice(context, outcome.message!);
@@ -174,29 +195,34 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
       '${c.selected.title} · '
       '${c.currentKind == BodyKind.rss ? 'RSS 摘要' : '当前全文'}';
 
-  String get _intro => switch (_kind) {
-    ReaderSheet.settings => '把工具调成舒服的样子，然后回到内容。',
-    ReaderSheet.appearance => '外观随系统切换，字号只影响你的阅读体验。',
-    ReaderSheet.devices => '设备处于同一局域网、两端应用同时打开时，就能交换阅读状态和归档。',
-    ReaderSheet.pair => '在另一台设备选择“输入配对码”，确认后开始连接。此处使用固定演示码。',
-    ReaderSheet.revoke => _deviceToRevoke?.name ?? '',
-    ReaderSheet.archives => '${c.selected.title}。收藏标记与实际保存的归档分别管理。',
-    ReaderSheet.deleteArchive ||
-    ReaderSheet.articleMenu ||
-    ReaderSheet.original => c.selected.title,
-    ReaderSheet.translation ||
-    ReaderSheet.summary ||
-    ReaderSheet.ask => _articleIntro,
-    ReaderSheet.service => '填写你自己的服务地址与模型。此页面只演示配置状态，不发送网络请求。',
-    ReaderSheet.modelTest =>
-      c.service.model.isEmpty ? '尚未选择模型' : c.service.model,
-    ReaderSheet.rules => '先预览，再放心交给规则。默认只执行第一条命中的规则，新建或修改后只影响之后的新文章。',
-    ReaderSheet.backup => '每天首次启动备份，保留最近 7 份。归档即使已取消收藏，也在备份范围内。',
-    ReaderSheet.exportBackup => '这是加密导出流程的界面预览，不会创建实际备份文件。',
-    ReaderSheet.storage => '普通缓存默认保留 30 天。归档长期保留，删除需要单独操作。',
-    ReaderSheet.cleanup => '将清理示例文章的普通正文及其关联普通生成结果，也会移除对应正文搜索命中。',
-    ReaderSheet.subscribe => '支持 RSS、Atom 和 OPML。同一订阅源重复添加会合并。',
-  };
+  String get _intro => !c.isDemo && !_kind.availableInLibrary
+      ? '此功能尚未开放。当前版本支持本机订阅与离线阅读。'
+      : switch (_kind) {
+          ReaderSheet.settings => '把工具调成舒服的样子，然后回到内容。',
+          ReaderSheet.appearance => '外观随系统切换，字号只影响你的阅读体验。',
+          ReaderSheet.devices => '设备处于同一局域网、两端应用同时打开时，就能交换阅读状态和归档。',
+          ReaderSheet.pair => '在另一台设备选择“输入配对码”，确认后开始连接。此处使用固定演示码。',
+          ReaderSheet.revoke => _deviceToRevoke?.name ?? '',
+          ReaderSheet.archives => '${c.selected.title}。收藏标记与实际保存的归档分别管理。',
+          ReaderSheet.deleteArchive ||
+          ReaderSheet.articleMenu ||
+          ReaderSheet.original => c.selected.title,
+          ReaderSheet.translation ||
+          ReaderSheet.summary ||
+          ReaderSheet.ask => _articleIntro,
+          ReaderSheet.service => '填写你自己的服务地址与模型。此页面只演示配置状态，不发送网络请求。',
+          ReaderSheet.modelTest =>
+            c.service.model.isEmpty ? '尚未选择模型' : c.service.model,
+          ReaderSheet.rules => '先预览，再放心交给规则。默认只执行第一条命中的规则，新建或修改后只影响之后的新文章。',
+          ReaderSheet.backup => '每天首次启动备份，保留最近 7 份。归档即使已取消收藏，也在备份范围内。',
+          ReaderSheet.exportBackup => '这是加密导出流程的界面预览，不会创建实际备份文件。',
+          ReaderSheet.storage => '普通缓存默认保留 30 天。归档长期保留，删除需要单独操作。',
+          ReaderSheet.cleanup => '将清理示例文章的普通正文及其关联普通生成结果，也会移除对应正文搜索命中。',
+          ReaderSheet.subscribe =>
+            c.isDemo
+                ? '支持 RSS、Atom 和 OPML。同一订阅源重复添加会合并。'
+                : '填写 RSS / Atom 订阅地址。同一订阅源重复添加会合并。',
+        };
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -292,6 +318,8 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
                   ),
                   const SizedBox(height: 23),
                   ..._content(),
+                  if (c.storageError != null && c.storageError != _feedback)
+                    _message(c.storageError!),
                   if (_feedback != null)
                     _message(_feedback!, key: const ValueKey('sheet-feedback')),
                 ],
@@ -303,38 +331,68 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
     },
   );
 
-  List<Widget> _content() => switch (_kind) {
-    ReaderSheet.settings => _settings(),
-    ReaderSheet.appearance => _appearance(),
-    ReaderSheet.devices => _devices(),
-    ReaderSheet.pair => _pair(),
-    ReaderSheet.revoke => _revoke(),
-    ReaderSheet.archives => _archives(),
-    ReaderSheet.deleteArchive => _deleteArchive(),
-    ReaderSheet.translation => _translation(),
-    ReaderSheet.summary => _summary(),
-    ReaderSheet.ask => _ask(),
-    ReaderSheet.service => _service(),
-    ReaderSheet.modelTest => _modelTest(),
-    ReaderSheet.rules => _rules(),
-    ReaderSheet.backup => _backup(),
-    ReaderSheet.exportBackup => _export(),
-    ReaderSheet.storage => _storage(),
-    ReaderSheet.cleanup => _cleanup(),
-    ReaderSheet.subscribe => _subscribe(),
-    ReaderSheet.articleMenu => _articleMenu(),
-    ReaderSheet.original => [
-      _message(
-        '这里的文章由自带的示例文字组成，没有对应的公开原网页。正式阅读流程会保留订阅条目的原始链接，在提取失败或缓存清理后仍可访问。',
-      ),
-      ReaderButton(
-        text: '继续阅读示例',
-        primary: true,
-        expand: true,
-        onPressed: _close,
-      ),
-    ],
-  };
+  List<Widget> _content() => !c.isDemo && !_kind.availableInLibrary
+      ? [ReaderButton(text: '返回阅读', onPressed: _close)]
+      : switch (_kind) {
+          ReaderSheet.settings => _settings(),
+          ReaderSheet.appearance => _appearance(),
+          ReaderSheet.devices => _devices(),
+          ReaderSheet.pair => _pair(),
+          ReaderSheet.revoke => _revoke(),
+          ReaderSheet.archives => _archives(),
+          ReaderSheet.deleteArchive => _deleteArchive(),
+          ReaderSheet.translation => _translation(),
+          ReaderSheet.summary => _summary(),
+          ReaderSheet.ask => _ask(),
+          ReaderSheet.service => _service(),
+          ReaderSheet.modelTest => _modelTest(),
+          ReaderSheet.rules => _rules(),
+          ReaderSheet.backup => _backup(),
+          ReaderSheet.exportBackup => _export(),
+          ReaderSheet.storage => _storage(),
+          ReaderSheet.cleanup => _cleanup(),
+          ReaderSheet.subscribe => _subscribe(),
+          ReaderSheet.articleMenu => _articleMenu(),
+          ReaderSheet.original => _original(),
+        };
+
+  List<Widget> _original() => c.isDemo
+      ? [
+          _message(
+            '这里的文章由自带的示例文字组成，没有对应的公开原网页。正式阅读流程会保留订阅条目的原始链接，在提取失败或缓存清理后仍可访问。',
+          ),
+          ReaderButton(
+            text: '继续阅读示例',
+            primary: true,
+            expand: true,
+            onPressed: _close,
+          ),
+        ]
+      : [
+          if (c.selected.link == null)
+            _message('订阅源没有提供可用的原网页链接。')
+          else ...[
+            SelectableText(
+              c.selected.link!,
+              style: TextStyle(color: colors.accent, fontSize: 13),
+            ),
+            const SizedBox(height: 18),
+            ReaderButton(
+              text: '在浏览器中打开',
+              primary: true,
+              expand: true,
+              onPressed: () async {
+                final message = await c.openOriginal();
+                if (!mounted) return;
+                if (message == null) {
+                  _close();
+                } else {
+                  _notice(message);
+                }
+              },
+            ),
+          ],
+        ];
 
   List<Widget> _settings() => [
     _card([
@@ -349,7 +407,7 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
         _row(
           icon: icon,
           title: title,
-          caption: caption,
+          caption: c.isDemo || sheet.availableInLibrary ? caption : '尚未开放',
           onTap: () => _go(sheet),
         ),
     ]),
@@ -562,8 +620,9 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
           icon: 'archive',
           title:
               '${archive.kind == BodyKind.full ? '提取全文' : 'RSS 正文'} · ${archive.savedLabel}',
-          caption:
-              '正文与图片已保存${archive.resultLabels.isEmpty ? '' : ' · 附带${archive.resultLabels.join('、')}'}',
+          caption: c.isDemo
+              ? '正文与图片已保存${archive.resultLabels.isEmpty ? '' : ' · 附带${archive.resultLabels.join('、')}'}'
+              : '正文文字已保存 · 图片请查看原网页',
           onTap: () {
             c.openArchive(archive.id);
             _close();
@@ -591,7 +650,11 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
         onPressed: () => _notice(c.toggleFavorite()),
       ),
     ]),
-    _message('取消收藏后，这些版本仍可从“保留归档”访问、搜索、同步和恢复。'),
+    _message(
+      c.isDemo
+          ? '取消收藏后，这些版本仍可从“保留归档”访问、搜索、同步和恢复。'
+          : '取消收藏后，这些版本仍可从“保留归档”访问和搜索。本机归档仅包含正文文字。',
+    ),
   ];
 
   List<Widget> _deleteArchive() {
@@ -604,9 +667,9 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
     return [
       _message(
         '将删除 ${archive?.savedLabel ?? ''} 的'
-        '${archive?.kind == BodyKind.rss ? ' RSS 正文' : '全文'}快照及图片。'
+        '${archive?.kind == BodyKind.rss ? ' RSS 正文' : '全文'}快照${c.isDemo ? '及图片' : '文字'}。'
         '${labels.isEmpty ? '此版本没有附加生成结果。' : '附加结果也会删除：${labels.join('、')}。'}'
-        '\n删除会参与局域网同步，其他归档和收藏、已读标记保留。',
+        '\n${c.isDemo ? '删除会参与局域网同步，' : ''}其他归档和收藏、已读标记保留。',
       ),
       _buttons([
         ReaderButton(
@@ -1015,10 +1078,16 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
   }
 
   List<Widget> _subscribe() => [
-    _field('订阅源名称', _feedName, hint: '例如：慢读 Slow Reading'),
+    _field(
+      '订阅源名称',
+      _feedName,
+      key: const ValueKey('feed-name'),
+      hint: '例如：慢读 Slow Reading',
+    ),
     _field(
       'RSS / Atom 地址',
       _feedUrl,
+      key: const ValueKey('feed-url'),
       hint: 'https://example.com/feed.xml',
       keyboard: TextInputType.url,
     ),
@@ -1028,13 +1097,29 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
       '技术': '技术',
     }, (value) => setState(() => _category = value)),
     ReaderButton(
-      text: '添加示例订阅',
+      text: c.isDemo
+          ? '添加示例订阅'
+          : c.isFetchingFeeds
+          ? '正在获取订阅…'
+          : '添加订阅并获取文章',
       primary: true,
       expand: true,
-      onPressed: () =>
-          _notice(c.addSource(_feedName.text, _feedUrl.text, _category)),
+      onPressed: () async {
+        if (c.isFetchingFeeds) return;
+        final message = await c.subscribe(
+          _feedName.text,
+          _feedUrl.text,
+          _category,
+        );
+        if (!mounted) return;
+        _notice(message, close: !c.isDemo && c.feedError == null);
+      },
     ),
-    _message('只添加内存中的订阅入口，不抓取网页。OPML 的解析、导入和导出留待数据层实现。'),
+    _message(
+      c.isDemo
+          ? '只添加内存中的订阅入口，不抓取网页。OPML 的解析、导入和导出留待数据层实现。'
+          : '正文文字会保存在本机，断网也能继续阅读。图片与原始排版可从原网页查看。',
+    ),
   ];
 
   List<Widget> _articleMenu() => [
@@ -1060,7 +1145,7 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
       _row(
         icon: 'external',
         title: '原网页入口',
-        caption: '离开应用继续阅读的入口预览',
+        caption: c.isDemo ? '离开应用继续阅读的入口预览' : '在浏览器中阅读源站内容',
         onTap: () => _go(ReaderSheet.original),
       ),
     ]),
@@ -1261,6 +1346,7 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
   Widget _field(
     String label,
     TextEditingController controller, {
+    Key? key,
     String? hint,
     String? help,
     bool obscure = false,
@@ -1276,6 +1362,7 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
       children: [
         _heading(label),
         TextField(
+          key: key,
           controller: controller,
           obscureText: obscure,
           maxLines: maxLines,

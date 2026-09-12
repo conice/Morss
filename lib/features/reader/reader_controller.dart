@@ -1,15 +1,19 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../data/reading_library.dart';
 import 'reader_models.dart';
 
 /// Presentation state for the selected A interface.
-/// Demo content is injected here; no networking or persistence is implied.
 class ReaderController extends ChangeNotifier {
   ReaderController.fromJson(Map<String, dynamic> json)
-    : sources = (json['sources'] as List)
+    : _library = null,
+      _launchOriginal = _openInBrowser,
+      sources = (json['sources'] as List)
           .map((value) => FeedSource.fromJson(value as Map<String, dynamic>))
           .toList(),
       articles = [
@@ -25,6 +29,183 @@ class ReaderController extends ChangeNotifier {
     };
     _originalRules = rules.map((rule) => rule.copy()).toList();
     selectedId = articles.first.id;
+  }
+
+  ReaderController.library(
+    ReadingLibrary library, {
+    Future<bool> Function(Uri)? launchOriginal,
+  }) : _library = library,
+       _launchOriginal = launchOriginal ?? _openInBrowser,
+       sources = [],
+       articles = [] {
+    selectedId = '';
+    body = BodyKind.rss;
+    devices.clear();
+    rules.clear();
+    syncLabel = '仅本机';
+    lastSync = '尚未同步';
+    automationPaused = true;
+    _originalSources = [];
+    _originalArchives = {};
+    _originalFavorites = {};
+    _originalRules = [];
+    _loadLibrary();
+  }
+
+  final ReadingLibrary? _library;
+  final Future<bool> Function(Uri) _launchOriginal;
+
+  static Future<bool> _openInBrowser(Uri url) =>
+      launchUrl(url, mode: LaunchMode.externalApplication);
+
+  Future<String?> openOriginal() async {
+    final url = hasSelection ? Uri.tryParse(selected.link ?? '') : null;
+    if (url == null ||
+        !['http', 'https'].contains(url.scheme) ||
+        url.host.isEmpty) {
+      return '订阅源没有提供可用的原网页链接。';
+    }
+    try {
+      if (await _launchOriginal(url)) return null;
+    } catch (_) {
+      // The saved text remains readable when the platform cannot open a browser.
+    }
+    return '无法打开浏览器。可复制上方链接后手动打开。';
+  }
+
+  bool get isDemo => _library == null;
+  bool get hasSelection => articles.isNotEmpty;
+  bool isFetchingFeeds = false;
+  String? feedError;
+  String? storageError;
+  String refreshLabel = '尚未刷新';
+  String? _lastReadArticleId;
+  final Map<String, String> _committedArticles = {};
+  Map<String, dynamic> _committedPreferences = {};
+
+  void _loadLibrary() {
+    final data = _library!.load();
+    sources
+      ..clear()
+      ..addAll(data.sources);
+    articles
+      ..clear()
+      ..addAll(data.articles);
+    if (!articles.any((article) => article.id == selectedId)) {
+      selectedId = articles.firstOrNull?.id ?? '';
+      _rssVersion = null;
+    }
+    _applyPreferences(data.preferences);
+    _committedPreferences = Map.of(data.preferences);
+    _committedArticles
+      ..clear()
+      ..addEntries(
+        articles.map(
+          (article) => MapEntry(article.id, jsonEncode(article.toJson())),
+        ),
+      );
+  }
+
+  void _applyPreferences(Map<String, dynamic> preferences) {
+    themeMode = ThemeMode.values.firstWhere(
+      (mode) => mode.name == preferences['theme'],
+      orElse: () => ThemeMode.system,
+    );
+    fontSize = (preferences['fontSize'] as num? ?? 15).toDouble().clamp(13, 22);
+    _lastReadArticleId = preferences['lastArticle'] as String?;
+  }
+
+  bool _saveState([Iterable<ReaderArticle> changed = const []]) {
+    if (_library == null) return true;
+    final preferences = <String, dynamic>{
+      'theme': themeMode.name,
+      'fontSize': fontSize,
+      'lastArticle': _lastReadArticleId,
+    };
+    final updates = changed.toList();
+    try {
+      _library.saveState(articles: updates, preferences: preferences);
+      for (final article in updates) {
+        _committedArticles[article.id] = jsonEncode(article.toJson());
+      }
+      _committedPreferences = preferences;
+      storageError = null;
+      pendingChanges = 0;
+      return true;
+    } catch (_) {
+      try {
+        _loadLibrary();
+      } catch (_) {
+        // Keep the last committed state readable even if storage can no longer be opened.
+        for (var i = 0; i < articles.length; i++) {
+          final payload = _committedArticles[articles[i].id];
+          if (payload != null) {
+            articles[i] = ReaderArticle.fromJson(
+              jsonDecode(payload) as Map<String, dynamic>,
+              i,
+            );
+          }
+        }
+        _applyPreferences(_committedPreferences);
+      }
+      storageError = '本次更改未保存。请检查本机可用空间后重试；已有内容仍可阅读。';
+      return false;
+    }
+  }
+
+  Future<String> subscribe(String name, String url, String category) async {
+    if (_library == null) return addSource(name, url, category);
+    return _fetchFeeds(() async {
+      await _library.subscribe(name, url, category);
+      return '订阅已保存，正文文字可以离线阅读。';
+    });
+  }
+
+  Future<String> refreshSubscriptions() async {
+    if (_library == null) return '订阅已刷新 · 示例文章没有重复添加。';
+    return _fetchFeeds(() async {
+      final result = await _library.refresh(
+        onProgress: (completed, total) {
+          if (_disposed) return;
+          refreshLabel = '正在刷新 $completed / $total';
+          notifyListeners();
+        },
+      );
+      if (result.errors.isNotEmpty) feedError = result.errors.join('\n');
+      return '${result.succeeded} 个订阅刷新成功。${result.errors.isEmpty ? '' : '\n${result.errors.join('\n')}'}';
+    });
+  }
+
+  Future<String> _fetchFeeds(Future<String> Function() action) async {
+    if (isFetchingFeeds) return '正在获取订阅，请稍候。';
+    if (_disposed) return '阅读库已关闭。';
+    if (hasSelection && body == BodyKind.rss && archiveId == null) {
+      _rssVersion = bodyKey;
+    }
+    isFetchingFeeds = true;
+    feedError = null;
+    refreshLabel = '正在获取订阅';
+    notifyListeners();
+    try {
+      final message = await action();
+      if (_disposed) return '获取已停止。';
+      _loadLibrary();
+      refreshLabel = feedError == null ? '刚刚刷新' : '部分订阅未更新';
+      return message;
+    } on ReadingLibraryException catch (error) {
+      feedError = error.message;
+      return error.message;
+    } on FormatException {
+      feedError = '请填写有效的 HTTP / HTTPS RSS 或 Atom 地址。';
+      return feedError!;
+    } catch (_) {
+      feedError = '无法保存订阅，请检查本机可用空间后重试。已有内容保留。';
+      return feedError!;
+    } finally {
+      isFetchingFeeds = false;
+      if (feedError != null) refreshLabel = '刷新未全部完成';
+      if (!_disposed) notifyListeners();
+    }
   }
 
   static Future<ReaderController> loadDemo() async {
@@ -49,6 +230,7 @@ class ReaderController extends ChangeNotifier {
   bool readerOpen = false;
   BodyKind body = BodyKind.full;
   String? archiveId;
+  String? _rssVersion;
   bool bilingual = false;
   ThemeMode themeMode = ThemeMode.system;
   double fontSize = 15;
@@ -95,14 +277,22 @@ class ReaderController extends ChangeNotifier {
       sources.firstWhere((source) => source.id == article.sourceId);
   ArchiveSnapshot? get currentArchive => selected.archive(archiveId);
   BodyKind get currentKind => currentArchive?.kind ?? body;
-  String get bodyKey => archiveId ?? body.name;
+  String get bodyKey =>
+      archiveId ??
+      (isDemo || body == BodyKind.full
+          ? body.name
+          : _rssVersion ?? selected.rssVersionId ?? body.name);
   List<String> get currentParagraphs =>
       currentArchive?.paragraphs ??
-      (body == BodyKind.rss ? selected.rss : selected.paragraphs);
+      (body == BodyKind.rss
+          ? selected.rssVersions[bodyKey] ?? selected.rss
+          : selected.paragraphs);
   List<String> get currentEnglish =>
       currentArchive?.translations ??
       selected.english.take(currentParagraphs.length).toList();
-  bool get bodyAvailable => currentArchive != null || selected.cacheAvailable;
+  bool get bodyAvailable =>
+      currentArchive != null ||
+      (isDemo ? selected.cacheAvailable : currentParagraphs.isNotEmpty);
   double get progress => selected.positions[bodyKey] ?? 0;
   bool get canSync =>
       networkAvailable &&
@@ -131,6 +321,12 @@ class ReaderController extends ChangeNotifier {
   };
 
   ReaderArticle get resumeArticle {
+    if (!isDemo) {
+      final last = articles
+          .where((article) => article.id == _lastReadArticleId)
+          .firstOrNull;
+      if (last != null) return last;
+    }
     for (final article in articles) {
       if (article.progress > 0 && article.progress < 100) return article;
     }
@@ -271,6 +467,7 @@ class ReaderController extends ChangeNotifier {
 
   void openArticle(ArticleHit hit) {
     selectedId = hit.article.id;
+    _rssVersion = isDemo ? null : hit.article.rssVersionId;
     archiveId = hit.archiveId;
     body = hit.kind;
     bilingual = hit.translation;
@@ -278,12 +475,17 @@ class ReaderController extends ChangeNotifier {
     requestedParagraph = hit.paragraph;
     requestedProgress = hit.paragraph == null ? 0 : null;
     readingRequest++;
+    if (!isDemo) {
+      _lastReadArticleId = selectedId;
+      _saveState();
+    }
     notifyListeners();
   }
 
   void resume() {
     final article = resumeArticle;
     selectedId = article.id;
+    _rssVersion = article.lastReadVersionId;
     archiveId = article.archive(article.lastReadArchive)?.id;
     body = article.lastReadKind;
     bilingual = false;
@@ -301,10 +503,11 @@ class ReaderController extends ChangeNotifier {
 
   void switchBody(BodyKind kind) {
     body = kind;
+    _rssVersion = isDemo ? null : selected.rssVersionId;
     archiveId = null;
     bilingual = false;
     requestedParagraph = null;
-    requestedProgress = selected.positions[kind.name] ?? 0;
+    requestedProgress = selected.positions[bodyKey] ?? 0;
     readingRequest++;
     notifyListeners();
   }
@@ -333,22 +536,34 @@ class ReaderController extends ChangeNotifier {
   void updateProgress(double value, {required bool userScroll}) {
     if (!userScroll) return;
     value = value.clamp(0, 100);
-    if ((progress - value).abs() < .5) return;
+    if ((progress - value).abs() < .5 &&
+        (value < 99 || selected.isRead || !bodyAvailable)) {
+      return;
+    }
     selected.positions[bodyKey] = value;
     selected.progress = value;
     selected.lastReadKind = currentKind;
     selected.lastReadArchive = archiveId;
+    selected.lastReadVersionId = body == BodyKind.rss && archiveId == null
+        ? bodyKey
+        : null;
+    if (!isDemo && _lastReadArticleId != selectedId) {
+      _lastReadArticleId = selectedId;
+    }
     if (value >= 99 && !selected.isRead && bodyAvailable) {
       selected.isRead = true;
       pendingChanges++;
     }
+    _saveState([selected]);
     notifyListeners();
   }
 
   String toggleRead() {
     selected.isRead = !selected.isRead;
     pendingChanges++;
+    final saved = _saveState([selected]);
     notifyListeners();
+    if (!saved) return storageError!;
     return selected.isRead ? '已标为已读。' : '已标为未读，阅读位置保留。';
   }
 
@@ -358,7 +573,9 @@ class ReaderController extends ChangeNotifier {
       if (!hit.article.isRead) pendingChanges++;
       hit.article.isRead = true;
     }
+    final saved = _saveState(matches.map((hit) => hit.article));
     notifyListeners();
+    if (!saved) return storageError!;
     return '已将当前列表的 ${matches.length} 篇文章标为已读。';
   }
 
@@ -370,7 +587,9 @@ class ReaderController extends ChangeNotifier {
       _saveArchive(article);
     }
     pendingChanges++;
+    final saved = _saveState([article]);
     notifyListeners();
+    if (!saved) return storageError!;
     return article.isFavorite ? '已收藏，喜欢的内容留在这里。' : '已取消收藏，保存的归档仍在。';
   }
 
@@ -380,9 +599,19 @@ class ReaderController extends ChangeNotifier {
     article.archives.insert(
       0,
       ArchiveSnapshot(
-        id: '${article.id}-saved-${++_archiveSequence}',
+        id: isDemo
+            ? '${article.id}-saved-${++_archiveSequence}'
+            : List.generate(
+                16,
+                (_) => Random.secure()
+                    .nextInt(256)
+                    .toRadixString(16)
+                    .padLeft(2, '0'),
+              ).join(),
         kind: kind,
-        savedLabel: '今天 · 刚刚',
+        savedLabel: isDemo
+            ? '今天 · 刚刚'
+            : DateTime.now().toString().substring(0, 16),
         paragraphs: automatic ? article.paragraphs : List.of(currentParagraphs),
         translations: automatic ? article.english : List.of(currentEnglish),
         resultLabels: article.results.values
@@ -398,16 +627,20 @@ class ReaderController extends ChangeNotifier {
   String saveArchive() {
     if (!bodyAvailable) return '本机没有当前正文，请先补取。';
     _saveArchive(selected);
+    final saved = _saveState([selected]);
     notifyListeners();
+    if (!saved) return storageError!;
     return '已保存新的归档版本，原有快照保留。';
   }
 
   String deleteArchive(String id) {
     selected.archives.removeWhere((snapshot) => snapshot.id == id);
     selected.results.removeWhere((_, result) => result.archiveId == id);
-    if (archiveId == id) archiveId = null;
     pendingChanges++;
+    final saved = _saveState([selected]);
+    if (saved && archiveId == id) archiveId = null;
     notifyListeners();
+    if (!saved) return storageError!;
     return '这份归档已删除，收藏和已读标记保持原样。';
   }
 
@@ -420,11 +653,13 @@ class ReaderController extends ChangeNotifier {
 
   void setFontSize(double value) {
     fontSize = value.clamp(13, 22);
+    _saveState();
     notifyListeners();
   }
 
   void setTheme(ThemeMode value) {
     themeMode = value;
+    _saveState();
     notifyListeners();
   }
 
@@ -743,7 +978,9 @@ class ReaderController extends ChangeNotifier {
 
   @override
   void dispose() {
+    if (_disposed) return;
     _disposed = true;
+    _library?.close();
     super.dispose();
   }
 }

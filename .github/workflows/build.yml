@@ -43,6 +43,10 @@ jobs:
         run: flutter test --no-pub test/reader_controller_test.dart --reporter expanded
       - name: Test reader screen
         run: flutter test --no-pub test/reader_screen_test.dart --reporter expanded
+      - name: Test persistent reading library
+        run: flutter test --no-pub test/reader_library_controller_test.dart --reporter expanded
+      - name: Test live subscriptions UI
+        run: flutter test --no-pub test/reader_library_screen_test.dart --reporter expanded
 
   web:
     name: Web release

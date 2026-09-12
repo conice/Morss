@@ -110,7 +110,15 @@ class ReaderArticle {
     required this.fullAvailable,
     required this.progress,
     required this.archives,
-  }) : positions = {'rss': 0, 'full': progress};
+    this.link,
+    this.rssVersionId,
+    Map<String, List<String>> rssVersions = const {},
+  }) : positions = {'rss': 0, 'full': progress},
+       rssVersions = Map.unmodifiable(
+         rssVersions.map(
+           (id, text) => MapEntry(id, List<String>.unmodifiable(text)),
+         ),
+       );
 
   factory ReaderArticle.fromJson(Map<String, dynamic> json, int order) {
     List<String> strings(Object? value) =>
@@ -118,7 +126,7 @@ class ReaderArticle {
     final paragraphs = strings(json['paragraphs']);
     final rss = strings(json['rss']);
     final english = strings(json['english']);
-    return ReaderArticle(
+    final article = ReaderArticle(
       id: json['id'] as String,
       sourceId: json['source'] as String,
       title: json['title'] as String,
@@ -135,6 +143,11 @@ class ReaderArticle {
       isFavorite: json['favorite'] as bool,
       fullAvailable: json['extracted'] as bool,
       progress: (json['progress'] as num).toDouble(),
+      link: json['link'] as String?,
+      rssVersionId: json['rssVersionId'] as String?,
+      rssVersions: (json['rssVersions'] as Map? ?? {}).map(
+        (id, text) => MapEntry(id as String, strings(text)),
+      ),
       archives: (json['archives'] as List).map((value) {
         final map = value as Map<String, dynamic>;
         final kind = map['kind'] == 'rss' ? BodyKind.rss : BodyKind.full;
@@ -142,17 +155,76 @@ class ReaderArticle {
           id: map['id'] as String,
           kind: kind,
           savedLabel: map['date'] as String,
-          paragraphs: kind == BodyKind.rss
+          paragraphs: map.containsKey('paragraphs')
+              ? strings(map['paragraphs'])
+              : kind == BodyKind.rss
               ? (rss.isEmpty ? paragraphs.take(1).toList() : rss)
               : paragraphs,
-          translations: kind == BodyKind.rss
+          translations: map.containsKey('translations')
+              ? strings(map['translations'])
+              : kind == BodyKind.rss
               ? english.take(1).toList()
               : english,
           resultLabels: strings(map['results']),
         );
       }).toList(),
     );
+    if (json['positions'] case final Map positions) {
+      article.positions
+        ..clear()
+        ..addAll(
+          positions.map(
+            (key, value) => MapEntry(key as String, (value as num).toDouble()),
+          ),
+        );
+    }
+    article.cacheAvailable = json['cacheAvailable'] as bool? ?? true;
+    article.manualFavorite = json['manualFavorite'] as bool?;
+    article.lastReadKind = json['lastKind'] == 'rss'
+        ? BodyKind.rss
+        : BodyKind.full;
+    article.lastReadArchive = json['lastArchive'] as String?;
+    article.lastReadVersionId = json['lastVersion'] as String?;
+    return article;
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'source': sourceId,
+    'title': title,
+    'deck': deck,
+    'image': image,
+    'minutes': minutes,
+    'time': timeLabel,
+    'paragraphs': paragraphs,
+    'rss': rss,
+    'english': english,
+    'summary': summary,
+    'read': isRead,
+    'favorite': isFavorite,
+    'extracted': fullAvailable,
+    'progress': progress,
+    'positions': positions,
+    'lastKind': lastReadKind.name,
+    'lastArchive': lastReadArchive,
+    'lastVersion': lastReadVersionId,
+    'cacheAvailable': cacheAvailable,
+    'manualFavorite': manualFavorite,
+    'link': link,
+    'rssVersionId': rssVersionId,
+    'rssVersions': rssVersions,
+    'archives': [
+      for (final archive in archives)
+        {
+          'id': archive.id,
+          'kind': archive.kind.name,
+          'date': archive.savedLabel,
+          'paragraphs': archive.paragraphs,
+          'translations': archive.translations,
+          'results': archive.resultLabels,
+        },
+    ],
+  };
 
   final String id;
   final String sourceId;
@@ -162,6 +234,9 @@ class ReaderArticle {
   final int minutes;
   final String timeLabel;
   final int order;
+  final String? link;
+  final String? rssVersionId;
+  final Map<String, List<String>> rssVersions;
   final List<String> paragraphs;
   final List<String> rss;
   final List<String> english;
@@ -177,6 +252,7 @@ class ReaderArticle {
   double progress;
   BodyKind lastReadKind = BodyKind.full;
   String? lastReadArchive;
+  String? lastReadVersionId;
 
   ArchiveSnapshot? archive(String? id) {
     for (final snapshot in archives) {

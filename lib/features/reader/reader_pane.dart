@@ -125,10 +125,23 @@ class _ReaderPaneState extends State<ReaderPane> {
           notification.metrics.pixels / extent * 100,
           userScroll: true,
         );
+      } else if (notification is OverscrollNotification) {
+        _readShortBody(notification.overscroll);
       }
     }
     if (notification is ScrollEndNotification) _userScroll = false;
     return false;
+  }
+
+  void _readShortBody(double direction) {
+    if (!c.isDemo &&
+        !_programmatic &&
+        direction > 0 &&
+        _scroll.hasClients &&
+        _scroll.position.maxScrollExtent <= 0 &&
+        c.bodyAvailable) {
+      c.updateProgress(100, userScroll: true);
+    }
   }
 
   @override
@@ -161,7 +174,10 @@ class _ReaderPaneState extends State<ReaderPane> {
           Expanded(
             child: Listener(
               onPointerSignal: (event) {
-                if (event is PointerScrollEvent) _userScroll = true;
+                if (event is PointerScrollEvent) {
+                  _userScroll = true;
+                  _readShortBody(event.scrollDelta.dy);
+                }
               },
               child: NotificationListener<ScrollNotification>(
                 onNotification: _onScroll,
@@ -170,6 +186,9 @@ class _ReaderPaneState extends State<ReaderPane> {
                   child: SingleChildScrollView(
                     key: const ValueKey('article-scroll'),
                     controller: _scroll,
+                    physics: c.isDemo
+                        ? null
+                        : const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.fromLTRB(
                       horizontal,
                       mobile || compact
@@ -337,7 +356,11 @@ class _ReaderPaneState extends State<ReaderPane> {
                       style: TextStyle(color: Color(0xffbcc5b7)),
                     ),
                   ),
-                  Text(article.timeLabel == '昨天' ? '9 月 11 日' : '9 月 12 日'),
+                  Text(
+                    c.isDemo
+                        ? (article.timeLabel == '昨天' ? '9 月 11 日' : '9 月 12 日')
+                        : article.timeLabel,
+                  ),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 2),
                     child: Text(
@@ -359,8 +382,9 @@ class _ReaderPaneState extends State<ReaderPane> {
                   const SizedBox(width: 3),
                   Text(
                     !c.bodyAvailable
-                        ? '正文已清理'
-                        : c.currentArchive?.savedLabel ?? '本机可离线阅读',
+                        ? (c.isDemo ? '正文已清理' : '订阅未提供正文')
+                        : c.currentArchive?.savedLabel ??
+                              (c.isDemo ? '本机可离线阅读' : '正文文字已离线保存'),
                     style: TextStyle(
                       color: Color(0xff7e936d),
                       fontSize: mobile ? 8 : 9,
@@ -387,32 +411,34 @@ class _ReaderPaneState extends State<ReaderPane> {
             },
           ),
         ),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(mobile ? 12 : 15),
-          child: Image.asset(
-            'assets/images/${article.image}.jpg',
-            width: double.infinity,
-            height: mobile ? 181 : (size.height * .2).clamp(168, 245),
-            fit: BoxFit.cover,
-            semanticLabel: switch (article.image) {
-              'mountain' => '阳光下连绵的山峰',
-              'forest' => '光线穿过绿色森林',
-              'architecture' => '明亮建筑的几何线条',
-              'desk' => '桌上的书本与笔记',
-              _ => '海岸的浪花',
-            },
+        if (article.image.isNotEmpty) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(mobile ? 12 : 15),
+            child: Image.asset(
+              'assets/images/${article.image}.jpg',
+              width: double.infinity,
+              height: mobile ? 181 : (size.height * .2).clamp(168, 245),
+              fit: BoxFit.cover,
+              semanticLabel: switch (article.image) {
+                'mountain' => '阳光下连绵的山峰',
+                'forest' => '光线穿过绿色森林',
+                'architecture' => '明亮建筑的几何线条',
+                'desk' => '桌上的书本与笔记',
+                _ => '海岸的浪花',
+              },
+            ),
           ),
-        ),
-        const SizedBox(height: 9),
-        Text(
-          article.id == 'quiet' ? '留一点空白，让好内容慢慢发生。' : '每一篇值得停留的文字，都有自己的风景。',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: mobile ? 8 : 9,
-            color: colors.faint,
-            letterSpacing: .4,
+          const SizedBox(height: 9),
+          Text(
+            article.id == 'quiet' ? '留一点空白，让好内容慢慢发生。' : '每一篇值得停留的文字，都有自己的风景。',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: mobile ? 8 : 9,
+              color: colors.faint,
+              letterSpacing: .4,
+            ),
           ),
-        ),
+        ],
         const SizedBox(height: 22),
         _readingTools(),
         if (c.currentArchive != null)
@@ -420,8 +446,14 @@ class _ReaderPaneState extends State<ReaderPane> {
             '正在查看 ${c.currentArchive!.savedLabel} 保存的'
             '${c.currentKind == BodyKind.rss ? ' RSS 正文' : '全文'}；源站更新不会替换这份快照。',
           ),
-        if (c.currentKind == BodyKind.rss)
+        if (c.isDemo && c.currentKind == BodyKind.rss)
           _message('此订阅仅提供摘要。可以提取公开网页全文，或查看原网页入口。'),
+        if (!c.isDemo && c.currentArchive == null)
+          _message(
+            c.bodyKey == c.selected.rssVersionId
+                ? '这里显示订阅源提供的正文文字。原网页可查看图片与排版。'
+                : '这是上次阅读的正文版本，点击「RSS 正文」可查看更新内容。',
+          ),
         c.bodyAvailable ? _body() : _missingBody(),
       ],
     );
@@ -437,7 +469,7 @@ class _ReaderPaneState extends State<ReaderPane> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (final kind in BodyKind.values) ...[
+          for (final kind in c.isDemo ? BodyKind.values : [BodyKind.rss]) ...[
             ReaderTap(
               key: ValueKey('body-${kind.name}'),
               onTap: () => kind == BodyKind.full && !c.selected.fullAvailable
@@ -679,21 +711,22 @@ class _ReaderPaneState extends State<ReaderPane> {
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 50),
     child: Column(
       children: [
-        const Text(
-          '本机正文缓存已清理',
+        Text(
+          c.isDemo ? '本机正文缓存已清理' : '订阅未提供可读正文',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 15),
         ),
         const SizedBox(height: 9),
         Text(
-          '保留的标题仍然可搜，归档版本也仍可阅读。',
+          c.isDemo ? '保留的标题仍然可搜，归档版本也仍可阅读。' : '可查看原网页，已保存的历史归档仍可阅读。',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, height: 1.8, color: colors.muted),
         ),
         const SizedBox(height: 17),
         ReaderButton(
-          text: '从配对设备补取正文',
-          onPressed: () => _notice(c.refillBody()),
+          text: c.isDemo ? '从配对设备补取正文' : '查看原网页',
+          onPressed: () =>
+              c.isDemo ? _notice(c.refillBody()) : _sheet(ReaderSheet.original),
         ),
       ],
     ),

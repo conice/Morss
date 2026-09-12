@@ -51,6 +51,33 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void _open(ReaderSheet kind) =>
       ReaderSheets.show(context, controller: c, initial: kind);
   void _notice(String message) => showReaderNotice(context, message);
+  Future<void> _refresh() async {
+    final message = await c.refreshSubscriptions();
+    if (mounted) {
+      _notice(message.length <= 180 ? message : '部分订阅未更新，请点击列表中的提示查看原因。');
+    }
+  }
+
+  void _showFeedErrors() => showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('订阅刷新未全部完成'),
+      content: SingleChildScrollView(child: Text(c.feedError ?? '没有刷新错误。')),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('知道了'),
+        ),
+      ],
+    ),
+  );
+
+  String get _dateLabel {
+    if (c.isDemo) return '9 月 12 日 · 星期六';
+    final now = DateTime.now();
+    return '${now.month} 月 ${now.day} 日 · 星期${'一二三四五六日'[now.weekday - 1]}';
+  }
+
   void _focusSearch() {
     c.backToList();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -85,6 +112,23 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   ),
           child: Scaffold(
             resizeToAvoidBottomInset: false,
+            bottomNavigationBar: c.storageError == null
+                ? null
+                : SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      child: Text(
+                        c.storageError!,
+                        key: const ValueKey('storage-error'),
+                        style: TextStyle(color: colors.accent, fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
             body: Stack(
               children: [
                 Positioned.fill(child: _AmbientBackground(dark: colors.dark)),
@@ -121,11 +165,22 @@ class _ReaderScreenState extends State<ReaderScreen> {
                                       child: _inbox(false),
                                     ),
                                     Expanded(
-                                      child: ReaderPane(
-                                        controller: c,
-                                        mobile: false,
-                                        onSheet: _open,
-                                      ),
+                                      child: c.hasSelection
+                                          ? ReaderPane(
+                                              controller: c,
+                                              mobile: false,
+                                              onSheet: _open,
+                                            )
+                                          : const Center(
+                                              key: ValueKey('empty-reader'),
+                                              child: Padding(
+                                                padding: EdgeInsets.all(24),
+                                                child: Text(
+                                                  '选择一篇文章，开始阅读',
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
                                     ),
                                   ],
                                 ),
@@ -142,7 +197,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     );
   }
 
-  Widget _mobile() => c.readerOpen
+  Widget _mobile() => c.readerOpen && c.hasSelection
       ? ReaderPane(controller: c, mobile: true, onSheet: _open)
       : Stack(
           children: [
@@ -269,7 +324,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
           _nav(
             label: '自动化',
             leading: const ReaderIcon('auto', size: 18),
-            count: c.automationPaused
+            count: !c.isDemo
+                ? '尚未开放'
+                : c.automationPaused
                 ? '已暂停'
                 : c.rules.where((rule) => rule.enabled).length.toString(),
             onTap: () => _open(ReaderSheet.rules),
@@ -295,7 +352,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       const SizedBox(width: 7),
                       Expanded(
                         child: Text(
-                          c.networkAvailable ? '设备间，继续阅读' : '离线，也能安心阅读',
+                          !c.isDemo
+                              ? '本机保存，随时阅读'
+                              : c.networkAvailable
+                              ? '设备间，继续阅读'
+                              : '离线，也能安心阅读',
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -307,7 +368,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   Padding(
                     padding: const EdgeInsets.only(left: 24, top: 5),
                     child: Text(
-                      c.networkAvailable
+                      !c.isDemo
+                          ? '跨设备同步尚未开放'
+                          : c.networkAvailable
                           ? '${c.syncLabel} · ${c.lastSync}'
                           : '本机内容仍然可用',
                       style: TextStyle(
@@ -517,7 +580,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   const SizedBox(height: 21),
                 ],
                 Text(
-                  '9 月 12 日 · 星期六',
+                  _dateLabel,
                   style: TextStyle(
                     fontSize: mobile ? 9 : 10,
                     height: mobile ? 13 / 9 : 1.5,
@@ -544,7 +607,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                     ReaderIconButton(
                       icon: 'refresh',
                       label: '刷新订阅',
-                      onPressed: () => _notice('订阅已刷新 · 示例文章没有重复添加。'),
+                      onPressed: _refresh,
                     ),
                   ],
                 ),
@@ -612,7 +675,24 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 mobile ? 20 : 15,
               ),
               children: [
-                if (c.view == ReaderView.today &&
+                if (!c.isDemo)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                    child: ReaderTap(
+                      onTap: c.feedError == null ? null : _showFeedErrors,
+                      child: Text(
+                        c.feedError == null ? c.refreshLabel : '部分订阅未更新 · 查看原因',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: c.feedError == null
+                              ? colors.muted
+                              : colors.accent,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (c.hasSelection &&
+                    c.view == ReaderView.today &&
                     c.query.isEmpty &&
                     c.sourceId == null)
                   _resumeCard(mobile),
@@ -903,17 +983,29 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 padding: const EdgeInsets.only(top: 3),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(9),
-                  child: Image.asset(
-                    'assets/images/${article.image}.jpg',
-                    height: mobile && width <= 370
-                        ? 68
-                        : compact
-                        ? 62
-                        : thumb,
-                    width: thumb,
-                    fit: BoxFit.cover,
-                    excludeFromSemantics: true,
-                  ),
+                  child: article.image.isEmpty
+                      ? Container(
+                          height: thumb,
+                          width: thumb,
+                          color: colors.wash,
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.article_outlined,
+                            size: 28,
+                            color: colors.faint,
+                          ),
+                        )
+                      : Image.asset(
+                          'assets/images/${article.image}.jpg',
+                          height: mobile && width <= 370
+                              ? 68
+                              : compact
+                              ? 62
+                              : thumb,
+                          width: thumb,
+                          fit: BoxFit.cover,
+                          excludeFromSemantics: true,
+                        ),
                 ),
               ),
             ],
@@ -960,13 +1052,21 @@ class _ReaderScreenState extends State<ReaderScreen> {
         ),
         const SizedBox(height: 13),
         Text(
-          c.query.isNotEmpty ? '还没有找到这篇文章' : '这里，留给下一篇好文章',
+          !c.isDemo && c.sources.isEmpty
+              ? '从第一个订阅开始'
+              : c.query.isNotEmpty
+              ? '还没有找到这篇文章'
+              : '这里，留给下一篇好文章',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 15),
         ),
         const SizedBox(height: 9),
         Text(
-          c.view == ReaderView.archives
+          !c.isDemo && c.sources.isEmpty
+              ? '添加 RSS 或 Atom，让喜欢的内容来到这里。'
+              : !c.isDemo && c.articles.isEmpty
+              ? '订阅源暂时没有文章，可以稍后刷新。'
+              : c.view == ReaderView.archives
               ? '归档会保留正文，取消收藏也能在这里找到。'
               : '换个关键词，或查看全部文章。',
           textAlign: TextAlign.center,
@@ -974,8 +1074,16 @@ class _ReaderScreenState extends State<ReaderScreen> {
         ),
         const SizedBox(height: 17),
         ReaderButton(
-          text: '查看全部文章',
-          onPressed: () => c.navigate(ReaderView.today),
+          text: !c.isDemo && c.sources.isEmpty
+              ? '添加第一个订阅'
+              : !c.isDemo && c.articles.isEmpty
+              ? '刷新订阅'
+              : '查看全部文章',
+          onPressed: () => !c.isDemo && c.sources.isEmpty
+              ? _open(ReaderSheet.subscribe)
+              : !c.isDemo && c.articles.isEmpty
+              ? _refresh()
+              : c.navigate(ReaderView.today),
         ),
       ],
     ),

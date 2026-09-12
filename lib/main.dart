@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'app.dart';
-import 'features/reader/reader_controller.dart';
+import 'bootstrap/open_reader_demo.dart'
+    if (dart.library.io) 'bootstrap/open_reader_native.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final controller = await ReaderController.loadDemo();
-  runApp(MorssApp(controller: controller));
+  runApp(MorssApp.open(loader: openReader));
 }

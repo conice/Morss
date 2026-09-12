@@ -1,6 +1,6 @@
 # GitHub Actions 构建
 
-[Build Morss 工作流](../../.github/workflows/build.yml)使用 Flutter 3.47.4，先逐项执行签名准备测试、Flutter 静态分析、阅读状态测试和界面测试，再由独立任务构建 Web、Windows 与 Android。
+[Build Morss 工作流](../../.github/workflows/build.yml)使用 Flutter 3.47.4，先逐项执行签名准备测试、Flutter 静态分析、示例阅读状态、示例界面、SQLite 阅读库和真实订阅界面测试，再由独立任务构建 Web、Windows 与 Android。每个测试文件使用单独步骤，失败后可明确定位。
 
 ## 触发与下载
 
@@ -80,4 +80,6 @@ python -m unittest discover -s tools/tests -p 'test_*.py' -v
 
 测试使用合成数据，验证模式选择、配置缺失、Base64、Properties 转义、文件权限和既有文件保护；真实 keystore 的密码、别名与 APK 签名由 Android 构建验证。
 
-2026-09-13 的[运行 34706736742](https://github.com/conice/Morss/actions/runs/34706736742)已通过 Verify、Web release、Windows x64 release 与 Android 签名 release 构建，三份产物均已上传。Android 前两次因 keystore 无法读取而失败；签名 Secrets 更新后，单独重跑 Android 的第三次尝试通过，原签名错误未复现。Android / Windows 实际安装运行仍待验证。实施与逐项验证记录见[任务 03](../../.scratch/morss/issues/03-github-build-workflow.md)。
+2026-09-13 的[运行 34706736742](https://github.com/conice/Morss/actions/runs/34706736742)针对界面示例版本 `c810ff9`，已通过 Verify、Web release、Windows x64 release 与 Android 签名 release 构建，三份产物均已上传。Android 前两次因 keystore 无法读取而失败；签名 Secrets 更新后，单独重跑 Android 的第三次尝试通过，原签名错误未复现。实施与逐项验证记录见[任务 03](../../.scratch/morss/issues/03-github-build-workflow.md)。
+
+真实订阅增量加入 SQLite 原生库、应用数据目录和浏览器插件，Android 允许订阅所需的 HTTP(S) 网络访问，HTTPS 继续使用系统信任配置。该增量的 Android / Windows 构建、SQLite 动态库打包、实际安装、数据持久化与浏览器唤起仍需在对应平台验证，不能沿用上述旧版本的构建结果。当前检查范围见[任务 04](../../.scratch/morss/issues/04-live-subscriptions.md)。
