@@ -55,7 +55,15 @@ bash tools/flutter.sh analyze
 bash tools/flutter.sh build web --release --no-web-resources-cdn
 ```
 
-这个入口兼容常规 PATH 中的 Flutter，也可通过 `MORSS_FLUTTER_ROOT` 指定 SDK。Termux 中的 Linux SDK 运行兼容处理只在本机工具目录，不属于应用源码。Android APK 与 Windows 包仍需对应平台工具链构建和实际安装验证；本次未配置或执行原生构建 CI。
+这个入口兼容常规 PATH 中的 Flutter，也可通过 `MORSS_FLUTTER_ROOT` 指定 SDK。Termux 中的 Linux SDK 运行兼容处理只在本机工具目录，不属于应用源码。
+
+## GitHub 构建
+
+[Build Morss 工作流](.github/workflows/build.yml)在推送 `main`、推送 `v*` 标签、拉取请求或手动触发时执行。各项测试独立执行，通过后分别生成 Web release、Windows x64 release 和 Android APK，并上传至该次运行的 **Artifacts**，保留 14 天。
+
+Android 的四项签名 Secrets 齐全时生成签名 release APK；均未配置时生成 debug APK，部分配置会明确报错。拉取请求始终生成 debug APK。完整配置、产物下载与本地签名方式见 [GitHub 构建说明](docs/ci/github-actions.md)。
+
+工作流已配置；GitHub runner 的实际构建及 Android / Windows 安装运行仍需验证，记录见[任务 03](.scratch/morss/issues/03-github-build-workflow.md)。
 
 ## 界面交互
 

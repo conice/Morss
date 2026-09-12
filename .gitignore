@@ -18,4 +18,6 @@ android/app/release/
 windows/flutter/ephemeral/
 *.jks
 *.keystore
+*.jks.base64
+*.keystore.base64
 .DS_Store
