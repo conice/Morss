@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta name="description" content="Morss 中文 RSS 阅读界面。阅读，回到自己。">
+  <meta name="theme-color" content="#e5eae2">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Morss">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="manifest" href="manifest.json">
+  <title>Morss · 阅读，回到自己</title>
+  <style>
+    body { margin: 0; background: #e5eae2; }
+    #opening { position: fixed; inset: 0; display: grid; place-content: center; gap: 18px; justify-items: center; font: 14px system-ui,sans-serif; color: #738078; }
+    #opening img { width: 52px; height: 52px; }
+    @media (prefers-color-scheme: dark) { body { background: #1b261f; } #opening { color: #95a38e; } }
+  </style>
+</head>
+<body>
+  <div id="opening" role="status"><img src="favicon.svg" alt="Morss"><span>正在打开阅读空间…</span></div>
+  <script>
+    window.addEventListener('flutter-first-frame', () => {
+      document.getElementById('opening')?.remove();
+      window.morssFirstFrame = true;
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

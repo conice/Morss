@@ -1,0 +1,350 @@
+{
+  "sources": [
+    {
+      "id": "slow",
+      "name": "慢读 Slow Reading",
+      "short": "慢",
+      "category": "生活",
+      "color": "#657951",
+      "bg": "#e6ebdc"
+    },
+    {
+      "id": "design",
+      "name": "设计札记",
+      "short": "D",
+      "category": "设计",
+      "color": "#8b7566",
+      "bg": "#eee7df"
+    },
+    {
+      "id": "field",
+      "name": "山野来信",
+      "short": "山",
+      "category": "生活",
+      "color": "#76817a",
+      "bg": "#e4eae6"
+    },
+    {
+      "id": "flutter",
+      "name": "Flutter 随记",
+      "short": "F",
+      "category": "技术",
+      "color": "#588392",
+      "bg": "#e1edf0"
+    },
+    {
+      "id": "space",
+      "name": "居所 Habitat",
+      "short": "H",
+      "category": "设计",
+      "color": "#9b8f72",
+      "bg": "#f0ebdf"
+    },
+    {
+      "id": "local",
+      "name": "本地优先周刊",
+      "short": "L",
+      "category": "技术",
+      "color": "#706e8e",
+      "bg": "#e7e5ee"
+    }
+  ],
+  "articles": [
+    {
+      "id": "quiet",
+      "source": "slow",
+      "title": "把注意力，留给真正重要的事",
+      "deck": "不急着读完世界，先找回自己的阅读节奏。",
+      "image": "mountain",
+      "minutes": 6,
+      "time": "09:41",
+      "read": false,
+      "favorite": true,
+      "extracted": true,
+      "progress": 42,
+      "paragraphs": [
+        "我们每天都在接收很多信息，却很少有时间真正读完一篇文章。消息不断抵达，标签页越开越多，阅读渐渐变成了另一种需要完成的任务。",
+        "试着把喜欢的作者放进一个安静的阅读器。不追逐热榜，也不必让推荐决定下一篇。订阅是一种主动的选择：我愿意把一点时间，留给这些声音。",
+        "为自己留出一小段不被打扰的时间。可以是清晨的一杯咖啡，也可以是回家路上的十分钟。把文章保存下来，关掉网络，读得慢一些，也没有关系。",
+        "好的工具应该记得你读到了哪里。当你合上电脑，拿起手机，熟悉的段落还在那里。需要思考时，停下来；想留下时，保存当时的文字，而不是一条可能失效的链接。",
+        "阅读的价值，从来不只是清空未读列表。那些让你停顿、联想，或者重新看待日常的句子，才是值得带走的部分。给注意力一点空间，让好内容慢慢发生。"
+      ],
+      "english": [
+        "We receive a great deal of information every day, yet rarely find time to finish an article. Messages keep arriving and tabs keep opening, until reading becomes another task to complete.",
+        "Try gathering your favorite writers in a quiet reader. There is no trending list to chase, and no recommendation deciding what comes next. A subscription is an active choice to give these voices some of your time.",
+        "Set aside a small, uninterrupted moment. It might be a morning coffee or ten minutes on the way home. Save the article, disconnect, and allow yourself to read a little more slowly.",
+        "A good tool remembers where you stopped. When you close the computer and pick up your phone, the familiar paragraph is still there. Pause to think; save the words as they were, rather than a link that might disappear.",
+        "The value of reading is not measured by an empty unread list. The sentences that make you pause, connect ideas, or see ordinary life differently are the ones worth keeping. Give your attention some space."
+      ],
+      "summary": [
+        "主动订阅喜欢的作者，让自己决定下一篇读什么。",
+        "保存文章并留出一段离线时间，减少阅读时的打扰。",
+        "保存值得留下的文字；未读数量不是衡量阅读价值的标准。"
+      ],
+      "archives": [
+        {
+          "id": "quiet-full",
+          "kind": "full",
+          "date": "9 月 12 日 · 09:12",
+          "results": [
+            "文章摘要"
+          ]
+        },
+        {
+          "id": "quiet-rss",
+          "kind": "rss",
+          "date": "9 月 10 日 · 21:08",
+          "results": []
+        }
+      ],
+      "positions": {
+        "rss": 0,
+        "full": 42
+      },
+      "rss": [
+        "我们每天都在接收很多信息，却很少有时间真正读完一篇文章。消息不断抵达，标签页越开越多，阅读渐渐变成了另一种需要完成的任务。"
+      ],
+      "userFavorite": null,
+      "results": {}
+    },
+    {
+      "id": "less",
+      "source": "design",
+      "title": "好的界面，也懂得适时退后",
+      "deck": "当每一处留白，都在为内容让路。",
+      "image": "architecture",
+      "minutes": 5,
+      "time": "09:18",
+      "read": false,
+      "favorite": false,
+      "extracted": true,
+      "progress": 0,
+      "paragraphs": [
+        "设计界面时，我们常常先想到还能增加什么：一个入口，一组卡片，或一段说明。但真正困难的部分，往往是判断什么可以暂时退后。",
+        "清楚的层级让人知道此刻应该看哪里。主要内容拥有最多的空间，次要操作在需要时出现，状态信息安静地待在边缘。",
+        "透明材质并不意味着越透明越好。背景需要被柔化，文字需要稳定的对比度。玻璃的作用是表达层次，而不是让阅读变得费力。",
+        "与其把每个功能都放在第一页，不如先完成一条自然的路径：找到一篇文章，读下去，在需要的时候把它留下。"
+      ],
+      "english": [
+        "When designing an interface, we often start with what we could add. The harder decision is knowing what can step back.",
+        "A clear hierarchy tells us where to look. Content has room, secondary actions appear when needed, and status remains at the edges.",
+        "Transparent material is not a competition in transparency. Soften the background and keep text contrast stable. Glass should explain depth, not make reading difficult.",
+        "Start with a natural path: find an article, read it, and keep it when it matters."
+      ],
+      "summary": [
+        "内容先于控件，次要操作按需出现。",
+        "玻璃材质应表达层次，同时保持文字清晰。",
+        "先完成查找、阅读、保存这一条连贯路径。"
+      ],
+      "archives": [],
+      "positions": {
+        "rss": 0,
+        "full": 0
+      },
+      "rss": [
+        "设计界面时，我们常常先想到还能增加什么：一个入口，一组卡片，或一段说明。但真正困难的部分，往往是判断什么可以暂时退后。"
+      ],
+      "userFavorite": null,
+      "results": {}
+    },
+    {
+      "id": "walk",
+      "source": "field",
+      "title": "散步，是另一种阅读世界的方式",
+      "deck": "走得慢一点，日常就会多出一些细节。",
+      "image": "forest",
+      "minutes": 8,
+      "time": "08:56",
+      "read": false,
+      "favorite": false,
+      "extracted": true,
+      "progress": 16,
+      "paragraphs": [
+        "熟悉的街道并不总是相同。光线移动，树叶换了颜色，路边的小店摆出了新的花。只有步子慢下来，这些微小的变化才会变得清晰。",
+        "散步没有必须抵达的终点。选择一条不常走的小路，把注意力交给脚下的声音和远处的风，思绪也会慢慢松开。",
+        "可以带一本小笔记，也可以什么都不带。把偶然看到的句子和植物记在心里，回家以后再找一本书，继续刚才没有结束的思考。"
+      ],
+      "english": [
+        "A familiar street is never exactly the same. Light moves, leaves change color, and a little shop puts out fresh flowers. We notice these details when we slow down.",
+        "A walk does not need a destination. Take a different path and listen to footsteps and wind, allowing your thoughts to loosen.",
+        "Bring a notebook, or bring nothing. Keep a phrase or a plant in mind; later, find a book and continue the thought."
+      ],
+      "summary": [
+        "放慢脚步能看见熟悉环境里的细微变化。",
+        "散步可以没有目标，注意力也能暂时松开。",
+        "观察与阅读可以互相延续。"
+      ],
+      "archives": [
+        {
+          "id": "walk-full",
+          "kind": "full",
+          "date": "9 月 11 日 · 18:32",
+          "results": []
+        }
+      ],
+      "positions": {
+        "rss": 0,
+        "full": 16
+      },
+      "rss": [
+        "熟悉的街道并不总是相同。光线移动，树叶换了颜色，路边的小店摆出了新的花。只有步子慢下来，这些微小的变化才会变得清晰。"
+      ],
+      "userFavorite": null,
+      "results": {}
+    },
+    {
+      "id": "flutter",
+      "source": "flutter",
+      "title": "Flutter：让多设备阅读从同一段落继续",
+      "deck": "从阅读位置到离线状态，连接体验中的小细节。",
+      "image": "desk",
+      "minutes": 9,
+      "time": "08:30",
+      "read": false,
+      "favorite": false,
+      "extracted": false,
+      "progress": 0,
+      "paragraphs": [
+        "阅读位置不只是一个百分比。不同设备的屏幕和字号不同，同一个百分比可能对应完全不同的句子。以段落为线索，可以让接续阅读更自然。",
+        "每台设备保留自己的数据。没有网络时，阅读与标记继续发生；设备回到同一局域网，再交换各自的修改。",
+        "同步需要清楚的状态：最后一次成功是什么时候，还有哪些内容尚未到达。不要用一个完成标记掩盖仍在等待的图片。",
+        "当文章出现新版本，旧版本的位置也应当留下。让数据关系表达真实的阅读经历，界面的行为才会变得可信。"
+      ],
+      "english": [
+        "Reading position is more than a percentage. Different screens and font sizes can put the same percentage at different sentences. Paragraphs provide a more natural anchor.",
+        "Each device keeps its own data. Reading and marking continue offline; changes are exchanged when devices return to the same local network.",
+        "Sync needs clear status: the last successful time, and the content still waiting. A completion badge should not hide missing images.",
+        "Keep positions for older versions when an article changes. The interface becomes trustworthy when its data reflects the reading experience."
+      ],
+      "summary": [
+        "用段落线索辅助不同屏幕之间的续读。",
+        "设备独立保存数据，同网时交换修改。",
+        "同步状态应区分已到达的正文与仍等待的图片。"
+      ],
+      "archives": [],
+      "positions": {
+        "rss": 0,
+        "full": 0
+      },
+      "rss": [
+        "阅读位置不只是一个百分比。不同设备的屏幕和字号不同，同一个百分比可能对应完全不同的句子。以段落为线索，可以让接续阅读更自然。"
+      ],
+      "userFavorite": null,
+      "results": {}
+    },
+    {
+      "id": "home",
+      "source": "space",
+      "title": "住进光里：一座房子的四季",
+      "deck": "空间的温度，藏在每天不同的光线里。",
+      "image": "architecture",
+      "minutes": 7,
+      "time": "昨天",
+      "read": true,
+      "favorite": true,
+      "extracted": true,
+      "progress": 100,
+      "paragraphs": [
+        "建筑的轮廓是固定的，光线却让它每天都呈现不同的表情。清晨的薄雾和午后的斜阳，为同一面墙留下不同的颜色。",
+        "设计这间小屋时，窗的位置先于家具被确定。读书的位置靠近柔和的自然光，休息的位置则留在更安静的背面。",
+        "空间不必被物件填满。空出来的角落，给植物、季节，也给尚未发生的生活。"
+      ],
+      "english": [
+        "The shape of a building stays fixed, but light gives it a different expression every day. Morning mist and afternoon sun leave different colors on the same wall.",
+        "The windows were positioned before the furniture. Reading happens near soft natural light, while rest belongs to the quieter side.",
+        "A space need not be filled with objects. Empty corners make room for plants, seasons, and life that has not happened yet."
+      ],
+      "summary": [
+        "自然光让固定的空间呈现变化。",
+        "先考虑日常活动，再决定家具的位置。",
+        "留白给未来的生活留下余地。"
+      ],
+      "archives": [],
+      "positions": {
+        "rss": 0,
+        "full": 100
+      },
+      "rss": [
+        "建筑的轮廓是固定的，光线却让它每天都呈现不同的表情。清晨的薄雾和午后的斜阳，为同一面墙留下不同的颜色。"
+      ],
+      "userFavorite": null,
+      "results": {}
+    },
+    {
+      "id": "tide",
+      "source": "field",
+      "title": "向海而行，把周末还给自己",
+      "deck": "一条没有赶路计划的海岸线。",
+      "image": "coast",
+      "minutes": 4,
+      "time": "昨天",
+      "read": true,
+      "favorite": false,
+      "extracted": true,
+      "progress": 100,
+      "paragraphs": [
+        "海边的时间有自己的刻度。潮水往复，云影移动，手机里的日程似乎也变得不那么紧迫。",
+        "我们沿着海岸走了一小段，在一处避风的地方坐下来。没有拍很多照片，只记下了水面被风吹起的纹路。",
+        "回到城市后，这段没有安排的时间依然留在记忆里。休息不一定需要一个复杂的目的地。"
+      ],
+      "english": [
+        "Time has its own measure by the sea. Tides return and cloud shadows move; the calendar on a phone feels less urgent.",
+        "We walked a short stretch of coast and sat out of the wind. We took few pictures, remembering instead the patterns on the water.",
+        "Back in the city, that unplanned time stayed with us. Rest does not require a complicated destination."
+      ],
+      "summary": [
+        "把时间交还给自然的节奏。",
+        "不必记录所有细节，也可以留下深刻的记忆。",
+        "休息不需要复杂的计划。"
+      ],
+      "archives": [],
+      "positions": {
+        "rss": 0,
+        "full": 100
+      },
+      "rss": [
+        "海边的时间有自己的刻度。潮水往复，云影移动，手机里的日程似乎也变得不那么紧迫。"
+      ],
+      "userFavorite": null,
+      "results": {}
+    },
+    {
+      "id": "local",
+      "source": "local",
+      "title": "小工具，大自由：为什么我们仍然需要本地优先",
+      "deck": "断开连接以后，属于你的内容还在。",
+      "image": "desk",
+      "minutes": 11,
+      "time": "昨天",
+      "read": false,
+      "favorite": false,
+      "extracted": false,
+      "progress": 0,
+      "paragraphs": [
+        "工具最基本的承诺，是在你需要时依然可用。对阅读而言，这意味着已经保存的内容，不应该因为一次断网而突然消失。",
+        "本地保存给日常使用带来了确定性，也带来了同步和冲突处理的问题。每个修改都需要保留足够的信息，才能在稍后遇到另一台设备时妥善合并。",
+        "这不是让所有工作都离开网络。抓取新文章和调用在线服务仍然需要连接；已经拥有的阅读材料，则可以继续陪你度过离线时光。"
+      ],
+      "english": [
+        "The most basic promise of a tool is to remain available when needed. Saved reading should not disappear when the network does.",
+        "Local storage makes daily use dependable, while introducing questions of synchronization and conflict. Every change needs enough context to merge later.",
+        "Not everything has to leave the network. New articles and online services still need a connection; the material you already have can stay with you offline."
+      ],
+      "summary": [
+        "已保存的内容应在断网后保持可读。",
+        "离线修改需要在稍后连接时妥善合并。",
+        "本地阅读和联网获取可以各自承担合适的职责。"
+      ],
+      "archives": [],
+      "positions": {
+        "rss": 0,
+        "full": 0
+      },
+      "rss": [
+        "工具最基本的承诺，是在你需要时依然可用。对阅读而言，这意味着已经保存的内容，不应该因为一次断网而突然消失。"
+      ],
+      "userFavorite": null,
+      "results": {}
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+name: morss
+description: Morss reader — the selected A glass reading interface.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_svg: ^2.2.0
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/data/reader_demo.json
+    - assets/images/
+    - assets/icons/
+  fonts:
+    - family: MorssSans
+      fonts:
+        - asset: assets/fonts/NotoSansSC.ttf
+    - family: MorssSerif
+      fonts:
+        - asset: assets/fonts/NotoSerifSC.ttf
