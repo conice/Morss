@@ -63,7 +63,7 @@ bash tools/flutter.sh build web --release --no-web-resources-cdn
 
 Android 的四项签名 Secrets 齐全时生成签名 release APK；均未配置时生成 debug APK，部分配置会明确报错。拉取请求始终生成 debug APK。完整配置、产物下载与本地签名方式见 [GitHub 构建说明](docs/ci/github-actions.md)。
 
-工作流已配置；GitHub runner 的实际构建及 Android / Windows 安装运行仍需验证，记录见[任务 03](.scratch/morss/issues/03-github-build-workflow.md)。
+2026-09-13 已通过 GitHub runner 的 Verify、Web release、Windows x64 release 与 Android 签名 release 构建，三份产物均已上传。Android / Windows 安装运行仍待验证，记录见[任务 03](.scratch/morss/issues/03-github-build-workflow.md)。
 
 ## 界面交互
 

@@ -78,4 +78,6 @@ keyPassword=your-key-password
 python -m unittest discover -s tools/tests -p 'test_*.py' -v
 ```
 
-测试使用合成数据，验证模式选择、配置缺失、Base64、Properties 转义、文件权限和既有文件保护；真实 keystore 的密码、别名与 APK 签名由 Android 构建验证。GitHub runner 的首次构建及 Android / Windows 安装运行结果需要另行记录，不能由工作流语法检查或 Web 构建结果代替。实施与逐项验证记录见[任务 03](../../.scratch/morss/issues/03-github-build-workflow.md)。
+测试使用合成数据，验证模式选择、配置缺失、Base64、Properties 转义、文件权限和既有文件保护；真实 keystore 的密码、别名与 APK 签名由 Android 构建验证。
+
+2026-09-13 的[运行 34706736742](https://github.com/conice/Morss/actions/runs/34706736742)已通过 Verify、Web release、Windows x64 release 与 Android 签名 release 构建，三份产物均已上传。Android 前两次因 keystore 无法读取而失败；签名 Secrets 更新后，单独重跑 Android 的第三次尝试通过，原签名错误未复现。Android / Windows 实际安装运行仍待验证。实施与逐项验证记录见[任务 03](../../.scratch/morss/issues/03-github-build-workflow.md)。

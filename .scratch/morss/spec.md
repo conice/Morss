@@ -82,7 +82,7 @@ Morss：个人多设备 RSS 阅读
 - 当前 Flutter 界面同时生成 Web 预览包；GitHub 构建的 Android APK 有完整签名配置时使用 release 签名，未配置时生成 debug APK。
 - 后续扩展目标为 iOS、macOS、Linux 原生客户端。
 
-2026-09-13 当前工作环境为 Android 13 / Termux，CPU 为 arm64。Flutter 3.47.4、Dart 3.13.3 与 Chromium 149 已可运行，界面任务已执行状态测试、组件测试、静态分析和 Web 构建。Web、Android 与 Windows 的 GitHub 构建工作流已配置，具体触发方式与签名约定见[构建说明](../../docs/ci/github-actions.md)和[任务 03](issues/03-github-build-workflow.md)。GitHub runner 的实际构建、安装和原生运行验证仍需在对应环境中完成。
+2026-09-13 当前工作环境为 Android 13 / Termux，CPU 为 arm64。Flutter 3.47.4、Dart 3.13.3 与 Chromium 149 已可运行，界面任务已执行状态测试、组件测试、静态分析和 Web 构建。Web、Android 与 Windows 的 GitHub 构建工作流已配置，具体触发方式与签名约定见[构建说明](../../docs/ci/github-actions.md)和[任务 03](issues/03-github-build-workflow.md)。GitHub runner 的 Verify、Web release、Windows x64 release 与 Android 签名 release 构建均已通过，三份产物均已上传；Android / Windows 实际安装和原生运行仍待验证。
 
 ### 界面
 

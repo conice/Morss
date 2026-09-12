@@ -36,15 +36,36 @@ Outcome: completed
 | `python -m unittest discover -s tools/tests -p 'test_*.py' -v` | 7 项通过；包含全部 14 种缺项组合、无签名回退、完整签名、Base64、特殊字符、文件权限与既有文件保护 |
 | `bash tools/flutter.sh pub get --enforce-lockfile` | 通过，使用现有锁定依赖 |
 | `bash tools/flutter.sh build web --release --no-pub --no-web-resources-cdn` | 通过；Web 产物与默认 Wasm 预检均成功 |
-| 文档链接 | 15 份 Markdown、83 个本地链接与锚点通过 |
+| `LC_ALL=C bash tools/flutter.sh test --concurrency=1 --reporter expanded` | 云端复核结束后补跑完整 Flutter 套件，21 项通过；测试文件串行执行 |
+| 文档链接 | 首次检查 15 份 Markdown、83 个本地链接与锚点通过；本次更新的 4 份文档、38 个本地链接与锚点复核通过 |
 | `git diff --cached --check` | 通过 |
 
 另已查询 Flutter 官方发行清单，确认 Linux / Windows x64 均提供 3.47.4 stable，提交与当前 SDK 一致。前轮 Flutter 逻辑 10 项、组件 11 项及静态分析的结果见任务 02；本次未修改 Flutter 界面源码。
 
-签名准备测试使用合成字节，不代表真实 keystore 已完成 APK 签名。GitHub 托管 runner 尚未执行本次工作流，Android / Windows 的构建与安装运行仍待实际验证；配置完成不代表 75 项产品验收通过。
+### GitHub runner
+
+2026-09-13（北京时间）使用已登录的 `gh` 获取[运行 34706736742](https://github.com/conice/Morss/actions/runs/34706736742)的实际结果，源代码提交为 `c810ff90c7385ee30e329a26f084c64688bf3aaa`：
+
+| 任务 | 结果 |
+| --- | --- |
+| [Verify](https://github.com/conice/Morss/actions/runs/34706736742/job/103588034331) | 首次尝试通过：7 项签名准备测试、Flutter 静态分析、10 项状态测试、11 项界面测试 |
+| [Web release](https://github.com/conice/Morss/actions/runs/34706736742/job/103588289853) | 首次尝试通过；`morss-web-release` 已上传，41,905,583 字节 |
+| [Windows x64 release](https://github.com/conice/Morss/actions/runs/34706736742/job/103588289862) | 首次尝试通过；`morss-windows-x64-release` 已上传，39,918,221 字节 |
+| Android APK：[尝试 1](https://github.com/conice/Morss/actions/runs/34706736742/job/103588289888)、[尝试 2](https://github.com/conice/Morss/actions/runs/34706736742/job/103594291489) | 均选择 release；在 `:app:packageRelease` 读取 keystore 时失败，报错相同 |
+| [Android APK：尝试 3](https://github.com/conice/Morss/actions/runs/34706736742/job/103596983328) | 单独重跑通过；`morss-android-release` 已上传，80,517,084 字节；签名文件清理通过 |
+
+前两次 Android 的错误为 `Keystore was tampered with, or password was incorrect`，日志本身不能区分密码不匹配与 keystore 损坏。仓库 Secret 元数据显示，keystore 密码、密钥别名和密钥密码在第二次失败后更新。
+
+按用户要求执行 `gh run rerun 34706736742 --repo conice/Morss --job 103594291489`，仅重跑 Android。第三次尝试在 Secrets 更新后启动，于北京时间 02:03:15–02:07:51 完成；日志确认 `Android build mode: release`，成功生成 `app-release.apk`，未再出现原 keystore 错误。Verify、Web 和 Windows 沿用首次尝试的成功结果，未重新执行。该次运行最终状态为 `success`，三份产物均未过期。
+
+签名准备单元测试使用合成字节；本次真实 keystore 签名由 Android runner 构建成功验证。Android / Windows 安装运行与完整产品的 75 项验收仍待执行。
+
+工作流提交 `3f08b90...c810ff9` 已完成 Standards 与 Spec 两项审查，均未发现已确认问题。
 
 ## Comments
 
 2026-09-13：按用户要求开始配置，无需新增产品或视觉决策。
 
-2026-09-13：工作流与签名处理配置完成。语法检查、7 项签名测试、锁定依赖安装、Web 构建、文档链接和差异检查分别通过。GitHub 首次运行及原生安装结果按上文保留为待验证事项。
+2026-09-13：工作流与签名处理配置完成。语法检查、7 项签名测试、锁定依赖安装、Web 构建、文档链接和差异检查分别通过；当时尚未执行 GitHub 首次运行及原生安装验证。
+
+2026-09-13：补齐 GitHub 构建结果与双项审查记录。更新签名 Secrets 后，单独重跑的 Android release 构建通过，当前配置下原错误未复现；完整 Flutter 套件 21 项串行通过。README、产品规格及构建说明同步实际状态。
