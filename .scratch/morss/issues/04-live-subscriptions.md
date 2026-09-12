@@ -62,9 +62,9 @@ Outcome: completed
 
 ## Remaining platform validation
 
-本任务完成后仍须在对应环境构建并实际安装 Android / Windows，验证 SQLite 原生库打包、系统数据目录、实际网络订阅、重启续读、离线访问及浏览器打开。Termux 的组件测试和 Web 预览不能替代这些验证。
+2026-09-13，提交 `146b1ac` 的 [GitHub 运行 34721865778](https://github.com/conice/Morss/actions/runs/34721865778)已通过 Verify、Web release、Windows x64 release 与 Android APK 构建，三份产物均已上传，包含 SQLite 的原生构建已验证。仍须实际安装 Android / Windows，验证系统数据目录、实际网络订阅、重启续读、离线访问及浏览器打开。构建、Termux 组件测试和 Web 预览不能替代这些设备验证。
 
-图片离线保存、普通缓存到期、OPML、订阅删除 / 编辑、局域网同步、真实全文提取、AI、备份与迁移恢复继续按总规格后续实施；当前数据只保存在本机。本任务不表示完整产品或 75 项验收完成。
+OPML 与订阅编辑 / 退订继续见[任务 05](05-subscription-management.md)。图片离线保存、普通缓存到期、局域网同步、真实全文提取、AI、备份与迁移恢复继续按总规格后续实施；当前数据只保存在本机。本任务不表示完整产品或 75 项验收完成。
 
 ## Standards
 

@@ -9,7 +9,9 @@ import 'package:sqlite3/sqlite3.dart';
 
 import '../features/reader/reader_models.dart';
 import 'feed_document.dart';
+import 'opml_document.dart';
 import 'reading_library.dart';
+import 'xml_text.dart';
 
 class SqliteReadingLibrary implements ReadingLibrary {
   SqliteReadingLibrary._(this._database, this._client);
@@ -95,12 +97,160 @@ class SqliteReadingLibrary implements ReadingLibrary {
   }
 
   @override
-  Future<void> subscribe(String name, String url, String category) async {
-    final uri = Uri.parse(url.trim()).removeFragment();
-    if (!['http', 'https'].contains(uri.scheme) || uri.host.isEmpty) {
-      throw const FormatException('请填写完整的 HTTP / HTTPS RSS 或 Atom 地址。');
+  String exportOpml() => OpmlDocument.export([
+    for (final row in _database.select('SELECT payload FROM subscriptions'))
+      FeedSource.fromJson(
+        jsonDecode(row['payload'] as String) as Map<String, dynamic>,
+      ),
+  ]);
+
+  @override
+  void updateSubscription(String id, String name, String category) {
+    name = name.trim();
+    category = category.trim();
+    if (name.isEmpty) {
+      throw const ReadingLibraryException('请填写订阅源名称。');
     }
+    final row = _database.select(
+      'SELECT payload FROM subscriptions WHERE id = ?',
+      [id],
+    ).firstOrNull;
+    if (row == null) throw const ReadingLibraryException('此订阅已不存在。');
+    final payload =
+        jsonDecode(row['payload'] as String) as Map<String, dynamic>;
+    payload['name'] = name;
+    payload['short'] = String.fromCharCodes(name.runes.take(1));
+    final nextCategory = category.isEmpty ? '未分类' : category;
+    if (payload['category'] != nextCategory) {
+      payload['category'] = nextCategory;
+      payload.remove('categoryPath');
+    }
+    _database.execute('UPDATE subscriptions SET payload = ? WHERE id = ?', [
+      jsonEncode(payload),
+      id,
+    ]);
+  }
+
+  @override
+  void unsubscribe(String id) {
+    final row = _database.select(
+      'SELECT payload FROM subscriptions WHERE id = ?',
+      [id],
+    ).firstOrNull;
+    if (row == null) throw const ReadingLibraryException('此订阅已不存在。');
+    final payload =
+        jsonDecode(row['payload'] as String) as Map<String, dynamic>;
+    payload['subscribed'] = false;
+    payload['unsubscribeRevision'] =
+        (payload['unsubscribeRevision'] as int? ?? 0) + 1;
+    _database.execute('UPDATE subscriptions SET payload = ? WHERE id = ?', [
+      jsonEncode(payload),
+      id,
+    ]);
+  }
+
+  @override
+  OpmlImportResult importOpml(String text) {
+    final document = OpmlDocument.parse(text);
+    var added = 0;
+    var merged = 0;
+    _database.execute('BEGIN IMMEDIATE');
+    try {
+      for (final entry in document.subscriptions) {
+        final existing = _database.select(
+          'SELECT payload FROM subscriptions WHERE url = ?',
+          [entry.url],
+        );
+        if (existing.isNotEmpty) {
+          final payload =
+              jsonDecode(existing.single['payload'] as String)
+                  as Map<String, dynamic>;
+          if (payload['subscribed'] == false) {
+            payload['subscribed'] = true;
+            _database.execute(
+              'UPDATE subscriptions SET payload = ? WHERE url = ?',
+              [jsonEncode(payload), entry.url],
+            );
+          }
+          merged++;
+          continue;
+        }
+        final sourceId = _id(entry.url);
+        _database.execute(
+          'INSERT INTO subscriptions (id, url, payload) VALUES (?, ?, ?)',
+          [
+            sourceId,
+            entry.url,
+            jsonEncode(
+              _newSubscriptionPayload(
+                id: sourceId,
+                name: entry.name,
+                url: entry.url,
+                category: entry.category,
+                categoryPath: entry.folders,
+              ),
+            ),
+          ],
+        );
+        added++;
+      }
+      _database.execute('COMMIT');
+      return OpmlImportResult(added, merged, document.skipped);
+    } catch (_) {
+      _database.execute('ROLLBACK');
+      rethrow;
+    }
+  }
+
+  Map<String, dynamic> _newSubscriptionPayload({
+    required String id,
+    required String name,
+    required String url,
+    required String category,
+    List<String>? categoryPath,
+  }) => {
+    'id': id,
+    'name': name,
+    'short': String.fromCharCodes(name.runes.take(1)),
+    'category': category.trim().isEmpty ? '未分类' : category.trim(),
+    'categoryPath': ?categoryPath,
+    'color': '#657951',
+    'bg': '#e6ebdc',
+    'url': url,
+  };
+
+  @override
+  Future<void> subscribe(String name, String url, String category) async {
+    final saved = await _fetchSubscription(
+      name,
+      url,
+      category,
+      reactivate: true,
+    );
+    if (!saved) {
+      throw const ReadingLibraryException('订阅状态已改变，本次获取的内容未保存。需要时请重新刷新。');
+    }
+  }
+
+  Future<bool> _fetchSubscription(
+    String name,
+    String url,
+    String category, {
+    required bool reactivate,
+  }) async {
+    final uri = normalizeFeedUrl(url);
     url = uri.toString();
+    final before = _database.select(
+      'SELECT payload FROM subscriptions WHERE url = ?',
+      [url],
+    ).firstOrNull;
+    final beforePayload = before == null
+        ? null
+        : jsonDecode(before['payload'] as String) as Map<String, dynamic>;
+    final wasInactive = beforePayload?['subscribed'] == false;
+    final unsubscribeRevision =
+        beforePayload?['unsubscribeRevision'] as int? ?? 0;
+    if (wasInactive && !reactivate) return false;
     final text = await _fetch(uri);
     final FeedDocument document;
     try {
@@ -109,24 +259,45 @@ class SqliteReadingLibrary implements ReadingLibrary {
       throw const ReadingLibraryException('无法解析 RSS / Atom，请确认填写的是订阅地址。');
     }
     if (_closed) throw const ReadingLibraryException('阅读库已关闭。');
+    final current = _database.select(
+      'SELECT payload FROM subscriptions WHERE url = ?',
+      [url],
+    ).firstOrNull;
+    final currentPayload = current == null
+        ? null
+        : jsonDecode(current['payload'] as String) as Map<String, dynamic>;
+    // OPML can reactivate a source and the user can unsubscribe again while
+    // this request is pending. The final flag alone cannot detect that change.
+    if ((currentPayload?['unsubscribeRevision'] as int? ?? 0) !=
+        unsubscribeRevision) {
+      return false;
+    }
+    if (currentPayload?['subscribed'] == false &&
+        (!reactivate || !wasInactive)) {
+      return false;
+    }
     name = name.trim().isEmpty ? document.title : name.trim();
     if (name.isEmpty) name = uri.host;
     final sourceId = _id(url);
-    final source = {
-      'id': sourceId,
-      'name': name,
-      'short': String.fromCharCodes(name.runes.take(1)),
-      'category': category,
-      'color': '#657951',
-      'bg': '#e6ebdc',
-      'url': url,
-    };
+    final source = _newSubscriptionPayload(
+      id: sourceId,
+      name: name,
+      url: url,
+      category: category,
+    );
     _database.execute('BEGIN IMMEDIATE');
     try {
       _database.execute(
         'INSERT OR IGNORE INTO subscriptions (id, url, payload) VALUES (?, ?, ?)',
         [sourceId, url, jsonEncode(source)],
       );
+      if (currentPayload?['subscribed'] == false) {
+        currentPayload!['subscribed'] = true;
+        _database.execute('UPDATE subscriptions SET payload = ? WHERE id = ?', [
+          jsonEncode(currentPayload),
+          sourceId,
+        ]);
+      }
       final discoveredAt = DateTime.now().millisecondsSinceEpoch;
       for (final (index, item) in document.entries.indexed) {
         final title = item.title;
@@ -184,6 +355,7 @@ class SqliteReadingLibrary implements ReadingLibrary {
         );
       }
       _database.execute('COMMIT');
+      return true;
     } catch (_) {
       _database.execute('ROLLBACK');
       rethrow;
@@ -194,14 +366,22 @@ class SqliteReadingLibrary implements ReadingLibrary {
   Future<FeedRefreshResult> refresh({
     void Function(int completed, int total)? onProgress,
   }) async {
-    final sources = load().sources;
+    final sources = load().sources
+        .where((source) => source.isSubscribed)
+        .toList();
     final errors = <String>[];
     var succeeded = 0;
     for (final (index, source) in sources.indexed) {
       if (_closed) break;
       try {
-        await subscribe(source.name, source.url!, source.category);
-        succeeded++;
+        if (await _fetchSubscription(
+          source.name,
+          source.url!,
+          source.category,
+          reactivate: false,
+        )) {
+          succeeded++;
+        }
       } on ReadingLibraryException catch (error) {
         errors.add('${source.name}：${error.message}');
       } on FormatException {
@@ -242,7 +422,7 @@ class SqliteReadingLibrary implements ReadingLibrary {
         }
         bytes.add(chunk);
       }
-      return _decodeXml(
+      return decodeXml(
         bytes.takeBytes(),
         response.headers['content-type'] ?? '',
       );
@@ -260,35 +440,6 @@ class SqliteReadingLibrary implements ReadingLibrary {
       timer.cancel();
       cancel();
     }
-  }
-
-  static String _decodeXml(Uint8List bytes, String contentType) {
-    if (bytes.length >= 2 &&
-        ((bytes[0] == 0xff && bytes[1] == 0xfe) ||
-            (bytes[0] == 0xfe && bytes[1] == 0xff))) {
-      if (bytes.length.isOdd) throw const FormatException('Invalid UTF-16');
-      final little = bytes[0] == 0xff;
-      return String.fromCharCodes([
-        for (var i = 2; i < bytes.length; i += 2)
-          little ? bytes[i] | bytes[i + 1] << 8 : bytes[i] << 8 | bytes[i + 1],
-      ]);
-    }
-    final declaration = latin1.decode(bytes.take(256).toList());
-    final headerEncoding = RegExp(
-      r'''charset\s*=\s*["']?([\w-]+)''',
-      caseSensitive: false,
-    ).firstMatch(contentType)?.group(1);
-    final xmlEncoding = RegExp(
-      r'''<\?xml[^>]*encoding\s*=\s*["']([\w-]+)''',
-      caseSensitive: false,
-    ).firstMatch(declaration)?.group(1);
-    final encoding = Encoding.getByName(
-      headerEncoding ?? xmlEncoding ?? 'utf-8',
-    );
-    if (encoding == null) {
-      throw const FormatException('Unsupported XML encoding');
-    }
-    return encoding.decode(bytes);
   }
 
   static String _id(String value) =>

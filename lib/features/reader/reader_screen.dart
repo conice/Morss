@@ -281,7 +281,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       const SizedBox(height: 4),
                     ],
                     _navLabel('我的分类'),
-                    for (final category in ['技术', '设计', '生活']) ...[
+                    for (final category in c.categories) ...[
                       _nav(
                         label: category,
                         leading: const ReaderIcon('folder', size: 18),

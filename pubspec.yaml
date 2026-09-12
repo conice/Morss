@@ -15,6 +15,7 @@ dependencies:
   flutter_svg: ^2.2.0
   cupertino_icons: ^1.0.8
   crypto: ^3.0.7
+  file_picker: ^12.3.0
   html: ^0.15.7
   http: ^1.6.0
   path: ^1.9.1

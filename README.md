@@ -4,7 +4,9 @@
 
 Android / Windows 已接入真实 RSS / Atom 订阅和 SQLite 本地阅读库：添加订阅、刷新文章、保存正文文字、阅读位置、已读、收藏、归档和外观设置，重启后可离线阅读。首次启动为空库；原网页可在浏览器中打开。Web 保留 A 的内存示例预览，刷新页面会重置示例数据。
 
-当前增量不包含 OPML、订阅管理增强、图片离线下载、缓存到期清理、网页全文提取、局域网同步、在线翻译 / AI 或备份恢复。原生界面将尚未开放的功能明确标出。产品要求仍以[总规格](.scratch/morss/spec.md)为准，75 项完整产品验收尚未完成；本次范围见[真实订阅与本地保存](.scratch/morss/issues/04-live-subscriptions.md)。
+原生界面还支持 OPML 文件导入导出、订阅改名、自定义分类和退订。退订停止刷新，保留已保存文章、阅读位置、已读状态、收藏与归档。
+
+当前增量不包含图片离线下载、缓存到期清理、网页全文提取、局域网同步、在线翻译 / AI 或备份恢复。原生界面将尚未开放的功能明确标出。产品要求仍以[总规格](.scratch/morss/spec.md)为准，75 项完整产品验收尚未完成；实现范围见[真实订阅与本地保存](.scratch/morss/issues/04-live-subscriptions.md)和[订阅管理与 OPML](.scratch/morss/issues/05-subscription-management.md)。
 
 ## 预览
 
@@ -39,6 +41,8 @@ flutter test --no-pub test/reader_controller_test.dart
 flutter test --no-pub test/reader_screen_test.dart
 flutter test --no-pub test/reader_library_controller_test.dart
 flutter test --no-pub test/reader_library_screen_test.dart
+flutter test --no-pub test/reader_subscriptions_controller_test.dart
+flutter test --no-pub test/reader_subscriptions_screen_test.dart
 flutter analyze --no-pub
 ```
 
@@ -71,11 +75,15 @@ bash tools/flutter.sh build web --release --no-pub --no-web-resources-cdn
 
 Android 的四项签名 Secrets 齐全时生成签名 release APK；均未配置时生成 debug APK，部分配置会明确报错。拉取请求始终生成 debug APK。完整配置、产物下载与本地签名方式见 [GitHub 构建说明](docs/ci/github-actions.md)。
 
-2026-09-13，界面示例版本 `c810ff9` 已通过 GitHub runner 的 Verify、Web release、Windows x64 release 与 Android 签名 release 构建，记录见[任务 03](.scratch/morss/issues/03-github-build-workflow.md)。本轮加入 SQLite 与原生插件后的 Android / Windows 构建及实际安装运行仍待验证，不能沿用上一版的成功结果。
+2026-09-13，真实订阅版本 `146b1ac` 已通过 [GitHub Verify、Web、Windows 和 Android 构建](https://github.com/conice/Morss/actions/runs/34721865778)，三份产物均已上传。本轮新增文件选择器后的验证记录见[任务 05](.scratch/morss/issues/05-subscription-management.md)；系统文件对话框、实际安装和设备使用仍需在 Android / Windows 验证。
 
 ## 原生阅读
 
 - 添加 HTTP(S) RSS / Atom 地址，可填写名称和分类；相同地址合并，同源条目更新保留状态与已有快照。
+- 在“设置 → 订阅管理”或添加面板进入管理；可改名、调整分类、按分类阅读和退订，更换地址通过添加新订阅完成。
+- 使用系统文件选择器导入 / 导出 OPML（导入文件最多 8 MB）；导入可离线执行，保存清单后点击刷新获取文章。重复源合并并保留已有设置，无效条目会报告跳过数量。
+- 支持 UTF-8、带 BOM 的 UTF-16 及 Dart 内置的声明字符集。嵌套文件夹显示为分类路径，导出时还原层级；没有分类的源归入“未分类”。
+- OPML 只包含订阅清单，不包含文章、阅读位置、收藏或归档；当前尚无完整阅读库备份导出。
 - 启动、返回前台、使用期间每 30 分钟或手动刷新；后台暂停定时刷新。失败保留已保存内容并显示原因。
 - 搜索本机文章与归档，筛选未读、收藏、分类和订阅源；继续上次阅读，保存各正文版本的位置。
 - 收藏与归档分别管理；取消收藏保留快照，删除最后一份归档不改变收藏或已读标记。
@@ -96,6 +104,7 @@ Web 的服务、同步、生成和备份面板均说明示例边界。无需输�
 - [采用 A 的设计记录](docs/design/selected-a.md)与[对照页说明](design/reference-a/README.md)。
 - [Flutter 界面实现记录](.scratch/morss/issues/02-implement-selected-a.md)。
 - [真实订阅与本地保存实现记录](.scratch/morss/issues/04-live-subscriptions.md)。
+- [订阅管理与 OPML 实现记录](.scratch/morss/issues/05-subscription-management.md)。
 - [领域词汇](CONTEXT.md)、[原型选择记录](.scratch/morss/issues/01-ios-style-ui-prototype.md)。
 - 原始 A/B/C 实验已归档到 `prototype/ios-glass-abc` 分支，提交 `ee16af178b3043c099c5a204bd224e3eb4182814`。主分支仅保留采用的 A。
 - 字体许可证位于 `assets/fonts/*-OFL.txt`；示例图片来源见对照页说明。

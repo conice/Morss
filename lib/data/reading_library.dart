@@ -1,5 +1,20 @@
 import '../features/reader/reader_models.dart';
 
+Uri normalizeFeedUrl(String value) {
+  final uri = Uri.parse(value.trim()).removeFragment();
+  if (!['http', 'https'].contains(uri.scheme) || uri.host.isEmpty) {
+    throw const FormatException('请填写完整的 HTTP / HTTPS RSS 或 Atom 地址。');
+  }
+  return uri;
+}
+
+class OpmlImportResult {
+  const OpmlImportResult(this.added, this.merged, this.skipped);
+  final int added;
+  final int merged;
+  final int skipped;
+}
+
 class ReadingLibraryException implements Exception {
   const ReadingLibraryException(this.message);
   final String message;
@@ -29,6 +44,10 @@ class ReadingLibraryData {
 /// The durable reading library. Its owner closes it when the reader is disposed.
 abstract interface class ReadingLibrary {
   ReadingLibraryData load();
+  OpmlImportResult importOpml(String text);
+  String exportOpml();
+  void updateSubscription(String id, String name, String category);
+  void unsubscribe(String id);
   Future<void> subscribe(String name, String url, String category);
   Future<FeedRefreshResult> refresh({
     void Function(int completed, int total)? onProgress,

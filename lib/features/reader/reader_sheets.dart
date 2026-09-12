@@ -8,6 +8,7 @@ import '../../design/reader_theme.dart';
 import '../../design/reader_widgets.dart';
 import 'reader_controller.dart';
 import 'reader_models.dart';
+import 'subscription_panel.dart';
 
 enum ReaderSheet {
   settings,
@@ -28,6 +29,7 @@ enum ReaderSheet {
   storage,
   cleanup,
   subscribe,
+  subscriptions,
   articleMenu,
   original;
 
@@ -37,6 +39,7 @@ enum ReaderSheet {
     archives ||
     deleteArchive ||
     subscribe ||
+    subscriptions ||
     articleMenu ||
     original => true,
     _ => false,
@@ -110,6 +113,7 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
   final _question = TextEditingController();
   final _feedName = TextEditingController();
   final _feedUrl = TextEditingController();
+  final _feedCategory = TextEditingController(text: '生活');
   final _password = TextEditingController();
   final _scroll = ScrollController();
   String _category = '生活';
@@ -140,6 +144,7 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
       _question,
       _feedName,
       _feedUrl,
+      _feedCategory,
       _password,
     ]) {
       controller.dispose();
@@ -187,6 +192,7 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
     ReaderSheet.storage => '留住喜欢的，清理临时的',
     ReaderSheet.cleanup => '清理本机普通缓存？',
     ReaderSheet.subscribe => '把喜欢的声音，加进来',
+    ReaderSheet.subscriptions => '你的订阅',
     ReaderSheet.articleMenu => '这篇文章',
     ReaderSheet.original => '原网页入口',
   };
@@ -222,6 +228,7 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
             c.isDemo
                 ? '支持 RSS、Atom 和 OPML。同一订阅源重复添加会合并。'
                 : '填写 RSS / Atom 订阅地址。同一订阅源重复添加会合并。',
+          ReaderSheet.subscriptions => '整理订阅与分类，也可以导入或导出 OPML。',
         };
 
   @override
@@ -352,6 +359,13 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
           ReaderSheet.storage => _storage(),
           ReaderSheet.cleanup => _cleanup(),
           ReaderSheet.subscribe => _subscribe(),
+          ReaderSheet.subscriptions => [
+            SubscriptionPanel(
+              controller: c,
+              onAdd: () => _go(ReaderSheet.subscribe),
+              onClose: _close,
+            ),
+          ],
           ReaderSheet.articleMenu => _articleMenu(),
           ReaderSheet.original => _original(),
         };
@@ -398,6 +412,8 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
     _card([
       for (final (icon, title, caption, sheet) in [
         ('text', '阅读与外观', '字号、明暗与跟随系统', ReaderSheet.appearance),
+        if (!c.isDemo)
+          ('folder', '订阅管理', '订阅、分类与 OPML', ReaderSheet.subscriptions),
         ('sparkles', '翻译与 AI', '服务地址、模型与每日调用额度', ReaderSheet.service),
         ('auto', '自动化', '让重复的小事自动发生', ReaderSheet.rules),
         ('laptop', '我的设备', '局域网配对与同步', ReaderSheet.devices),
@@ -1091,11 +1107,19 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
       hint: 'https://example.com/feed.xml',
       keyboard: TextInputType.url,
     ),
-    _select('分类', _category, const {
-      '生活': '生活',
-      '设计': '设计',
-      '技术': '技术',
-    }, (value) => setState(() => _category = value)),
+    if (c.isDemo)
+      _select('分类', _category, const {
+        '生活': '生活',
+        '设计': '设计',
+        '技术': '技术',
+      }, (value) => setState(() => _category = value))
+    else
+      _field(
+        '分类',
+        _feedCategory,
+        key: const ValueKey('feed-category'),
+        hint: '输入新的分类，或留空归入未分类',
+      ),
     ReaderButton(
       text: c.isDemo
           ? '添加示例订阅'
@@ -1109,7 +1133,7 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
         final message = await c.subscribe(
           _feedName.text,
           _feedUrl.text,
-          _category,
+          c.isDemo ? _category : _feedCategory.text,
         );
         if (!mounted) return;
         _notice(message, close: !c.isDemo && c.feedError == null);
@@ -1120,6 +1144,12 @@ class _ReaderSheetDialogState extends State<_ReaderSheetDialog> {
           ? '只添加内存中的订阅入口，不抓取网页。OPML 的解析、导入和导出留待数据层实现。'
           : '正文文字会保存在本机，断网也能继续阅读。图片与原始排版可从原网页查看。',
     ),
+    if (!c.isDemo)
+      ReaderButton(
+        text: '订阅管理',
+        icon: 'folder',
+        onPressed: () => _go(ReaderSheet.subscriptions),
+      ),
   ];
 
   List<Widget> _articleMenu() => [

@@ -47,6 +47,10 @@ jobs:
         run: flutter test --no-pub test/reader_library_controller_test.dart --reporter expanded
       - name: Test live subscriptions UI
         run: flutter test --no-pub test/reader_library_screen_test.dart --reporter expanded
+      - name: Test subscription management and OPML
+        run: flutter test --no-pub test/reader_subscriptions_controller_test.dart --reporter expanded
+      - name: Test subscription management UI
+        run: flutter test --no-pub test/reader_subscriptions_screen_test.dart --reporter expanded
 
   web:
     name: Web release

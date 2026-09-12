@@ -13,7 +13,7 @@ class ReaderController extends ChangeNotifier {
   ReaderController.fromJson(Map<String, dynamic> json)
     : _library = null,
       _launchOriginal = _openInBrowser,
-      sources = (json['sources'] as List)
+      _sources = (json['sources'] as List)
           .map((value) => FeedSource.fromJson(value as Map<String, dynamic>))
           .toList(),
       articles = [
@@ -36,7 +36,7 @@ class ReaderController extends ChangeNotifier {
     Future<bool> Function(Uri)? launchOriginal,
   }) : _library = library,
        _launchOriginal = launchOriginal ?? _openInBrowser,
-       sources = [],
+       _sources = [],
        articles = [] {
     selectedId = '';
     body = BodyKind.rss;
@@ -85,7 +85,7 @@ class ReaderController extends ChangeNotifier {
 
   void _loadLibrary() {
     final data = _library!.load();
-    sources
+    _sources
       ..clear()
       ..addAll(data.sources);
     articles
@@ -153,6 +153,83 @@ class ReaderController extends ChangeNotifier {
     }
   }
 
+  List<String> get categories => isDemo
+      ? ['技术', '设计', '生活']
+      : (sources.map((source) => source.category).toSet().toList()..sort());
+
+  String exportOpml() {
+    if (_library == null || _disposed) {
+      throw const ReadingLibraryException('请在原生阅读库中导出订阅。');
+    }
+    return _library.exportOpml();
+  }
+
+  void _pinCurrentRssVersion() {
+    if (hasSelection && body == BodyKind.rss && archiveId == null) {
+      _rssVersion = bodyKey;
+    }
+  }
+
+  void _reloadSubscriptions() {
+    _pinCurrentRssVersion();
+    _loadLibrary();
+    if (sourceId != null && !sources.any((source) => source.id == sourceId)) {
+      sourceId = null;
+    }
+    if (category != null && !categories.contains(category)) category = null;
+    storageError = null;
+    notifyListeners();
+  }
+
+  String? updateSubscription(String id, String name, String category) {
+    if (_library == null) return 'Web 示例不修改本机订阅。';
+    if (_disposed) return '阅读库已关闭。';
+    try {
+      _library.updateSubscription(id, name, category);
+      _reloadSubscriptions();
+      return null;
+    } on ReadingLibraryException catch (error) {
+      return error.message;
+    } catch (_) {
+      storageError = '订阅更改未保存，请检查本机可用空间后重试。';
+      notifyListeners();
+      return storageError!;
+    }
+  }
+
+  String? unsubscribe(String id) {
+    if (_library == null) return 'Web 示例不修改本机订阅。';
+    if (_disposed) return '阅读库已关闭。';
+    try {
+      _library.unsubscribe(id);
+      _reloadSubscriptions();
+      return null;
+    } on ReadingLibraryException catch (error) {
+      return error.message;
+    } catch (_) {
+      storageError = '退订未保存，请检查本机可用空间后重试。';
+      notifyListeners();
+      return storageError!;
+    }
+  }
+
+  String importOpml(String text) {
+    if (_library == null) return 'Web 示例不导入本机订阅。';
+    if (_disposed) return '阅读库已关闭。';
+    try {
+      final result = _library.importOpml(text);
+      _reloadSubscriptions();
+      return '新增 ${result.added} 个订阅，合并 ${result.merged} 个重复项，'
+          '跳过 ${result.skipped} 个无效项。刷新后可获取文章。';
+    } on FormatException {
+      return '无法导入 OPML，请检查文件格式和大小（最多 8 MB）。已有订阅保留。';
+    } catch (_) {
+      storageError = '导入未保存，请检查本机可用空间后重试。已有订阅保留。';
+      notifyListeners();
+      return storageError!;
+    }
+  }
+
   Future<String> subscribe(String name, String url, String category) async {
     if (_library == null) return addSource(name, url, category);
     return _fetchFeeds(() async {
@@ -179,9 +256,7 @@ class ReaderController extends ChangeNotifier {
   Future<String> _fetchFeeds(Future<String> Function() action) async {
     if (isFetchingFeeds) return '正在获取订阅，请稍候。';
     if (_disposed) return '阅读库已关闭。';
-    if (hasSelection && body == BodyKind.rss && archiveId == null) {
-      _rssVersion = bodyKey;
-    }
+    _pinCurrentRssVersion();
     isFetchingFeeds = true;
     feedError = null;
     refreshLabel = '正在获取订阅';
@@ -215,7 +290,10 @@ class ReaderController extends ChangeNotifier {
     );
   }
 
-  final List<FeedSource> sources;
+  final List<FeedSource> _sources;
+  List<FeedSource> get sources => isDemo
+      ? _sources
+      : _sources.where((source) => source.isSubscribed).toList();
   final List<ReaderArticle> articles;
   late final List<FeedSource> _originalSources;
   late final Map<String, List<ArchiveSnapshot>> _originalArchives;
@@ -274,7 +352,7 @@ class ReaderController extends ChangeNotifier {
   ReaderArticle get selected =>
       articles.firstWhere((article) => article.id == selectedId);
   FeedSource sourceOf(ReaderArticle article) =>
-      sources.firstWhere((source) => source.id == article.sourceId);
+      _sources.firstWhere((source) => source.id == article.sourceId);
   ArchiveSnapshot? get currentArchive => selected.archive(archiveId);
   BodyKind get currentKind => currentArchive?.kind ?? body;
   String get bodyKey =>

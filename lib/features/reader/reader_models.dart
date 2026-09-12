@@ -15,6 +15,8 @@ class FeedSource {
     required this.color,
     required this.background,
     this.url,
+    this.isSubscribed = true,
+    this.categoryPath,
   });
 
   factory FeedSource.fromJson(Map<String, dynamic> json) => FeedSource(
@@ -25,6 +27,10 @@ class FeedSource {
     color: json['color'] as String,
     background: json['bg'] as String,
     url: json['url'] as String?,
+    isSubscribed: json['subscribed'] as bool? ?? true,
+    categoryPath: json['categoryPath'] == null
+        ? null
+        : List<String>.unmodifiable(json['categoryPath'] as List),
   );
 
   final String id;
@@ -34,6 +40,8 @@ class FeedSource {
   final String color;
   final String background;
   final String? url;
+  final bool isSubscribed;
+  final List<String>? categoryPath;
 }
 
 class ArchiveSnapshot {
